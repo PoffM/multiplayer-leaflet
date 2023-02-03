@@ -1,4 +1,4 @@
-import { MultiplayerLeaflet } from "~/components/SharedLeaflet";
+import { MultiplayerLeaflet } from "~/components/MultiplayerLeaflet";
 
 export default function Home() {
   return (
