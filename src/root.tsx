@@ -1,7 +1,6 @@
 // @refresh reload
-import { Suspense } from "solid-js";
+import { createSignal, onMount, Suspense } from "solid-js";
 import {
-  A,
   Body,
   ErrorBoundary,
   FileRoutes,
@@ -12,9 +11,19 @@ import {
   Scripts,
   Title,
 } from "solid-start";
-import "./main.css"
+import "./main.css";
 
 export default function Root() {
+  const [colorMode, setColorMode] = createSignal("dark");
+
+  onMount(() => {
+    setColorMode(
+      window.matchMedia?.("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light"
+    );
+  });
+
   return (
     <Html lang="en">
       <Head>
@@ -22,7 +31,7 @@ export default function Root() {
         <Meta charset="utf-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <Body>
+      <Body data-theme={colorMode()} class={colorMode()}>
         <Suspense>
           <ErrorBoundary>
             <Routes>
