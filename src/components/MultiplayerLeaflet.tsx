@@ -17,7 +17,11 @@ function signalFromY<T extends Y.AbstractType<any>>(y: T) {
   });
 }
 
-export function MultiplayerLeaflet() {
+export interface MultiplayerLeafletProps {
+  roomName: () => string;
+}
+
+export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
   let div: HTMLDivElement | undefined = undefined;
 
   const ydoc = new Y.Doc();
@@ -39,7 +43,7 @@ export function MultiplayerLeaflet() {
     }).addTo(map);
 
     // clients connected to the same room-name share document updates
-    const provider = new WebrtcProvider("your-room-name", ydoc, {
+    const provider = new WebrtcProvider(roomName(), ydoc, {
       password: "password",
     });
 
