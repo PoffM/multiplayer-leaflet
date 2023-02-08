@@ -1,20 +1,13 @@
+import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  Accessor,
-  createEffect,
-  createSignal,
-  from,
-  onCleanup,
-  onMount,
-} from "solid-js";
+import { isEqual } from "lodash";
+import { Accessor, createEffect, from, onCleanup, onMount } from "solid-js";
 import { reconcile } from "solid-js/store";
+import { Awareness } from "y-protocols/awareness";
 import { Room, WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { isEqual, matchesProperty } from "lodash";
-import { LeafletMouseEvent, Map } from "leaflet";
-import { Awareness } from "y-protocols/awareness";
 
-/** Create a solidjs signal from a yjs type */
+/** Create a solidjs signal from a Yjs Type */
 function signalFromY<T extends Y.AbstractType<any>>(y: T) {
   return from<ReturnType<T["toJSON"]>>((set) => {
     set(y.toJSON());
@@ -26,16 +19,19 @@ function signalFromY<T extends Y.AbstractType<any>>(y: T) {
   });
 }
 
+/** Create a solidjs signal from a Yjs Awareness */
 function signalFromAwareness(awareness: Awareness) {
-  return from((set) => {
-    set(awareness.getStates());
-    function observer(_: unknown, room: Room | "local") {
-      if (typeof room === "string") return;
-      set(reconcile(room.awareness.getStates()));
+  return from<Map<number, {}>>(
+    (set) => {
+      set(awareness.getStates());
+      function observer(_: unknown, room: Room | "local") {
+        if (typeof room === "string") return;
+        set(reconcile(room.awareness.getStates()));
+      }
+      awareness.on("update", observer);
+      return () => awareness.off("update", observer);
     }
-    awareness.on("update", observer);
-    return () => awareness.off("update", observer);
-  });
+  );
 }
 
 export interface MultiplayerLeafletProps {
@@ -75,7 +71,34 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
 
     const awareness = signalFromAwareness(provider.awareness);
 
-    createEffect(() => console.log(awareness()))
+    const localMarkers = new Map<number, Marker<any>>();
+    createEffect(() => {
+      const awarenessMap = awareness();
+      if (!awarenessMap) return;
+
+      console.log({ awarenessMap });
+
+      const myClientId = provider.awareness.clientID;
+      for (const [clientId, state] of awarenessMap.entries() ?? []) {
+        if (clientId === myClientId) continue;
+
+        if (localMarkers.has(clientId)) {
+          const markerToUpdate = localMarkers.get(clientId);
+          markerToUpdate?.setLatLng(state.mouseLatLng);
+        } else {
+          const newMarker = L.marker(state.mouseLatLng).addTo(map);
+          localMarkers.set(clientId, newMarker);
+        }
+      }
+
+      // Delete a marker from the map when the cursor info is removed from awareness:
+      for (const [localClientId, marker] of localMarkers.entries()) {
+        if (!awarenessMap.has(localClientId)) {
+          marker.remove();
+          localMarkers.delete(localClientId);
+        }
+      }
+    });
 
     bindMyMapCursorToAwareness(provider, map);
 
@@ -87,7 +110,7 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
 
 /** Two-way syncing of the Leaflet Map view with Yjs state. */
 function syncMapView(
-  map: Map,
+  map: LeafletMap,
   yState: Y.Map<unknown>,
   stateSignal: Accessor<{ [x: string]: any } | undefined>
 ) {
@@ -113,7 +136,7 @@ function syncMapView(
 }
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
-function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: Map) {
+function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: LeafletMap) {
   let mousePressed = false;
   function updateMyPointer(e: LeafletMouseEvent) {
     if (e.type === "mousedown") {
