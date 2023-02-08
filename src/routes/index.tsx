@@ -44,14 +44,18 @@ export default function Home() {
     <div class="fixed inset-0 flex items-center justify-center">
       <main class="space-y-4">
         <h1 class="font-extrabold text-4xl text-center">Multiplayer Leaflet</h1>
-        <Show when={shareLink()}>
-          <div class="flex flex-col items-center gap-1">
-            <div>Share this link with someone to share a synchronized map:</div>
-            <div class="input-group flex items-center justify-center w-auto border rounded-lg border-gray-500">
-              <div class="px-4">{shareLink()}</div>
-              <CopyButton textToCopy={shareLink} />
+        <Show when={shareLink()} keyed>
+          {(link) => (
+            <div class="flex flex-col items-center gap-1">
+              <div>
+                Share this link with someone to share a synchronized map:
+              </div>
+              <div class="input-group flex items-center justify-center w-auto border rounded-lg border-gray-500">
+                <div class="px-4">{link}</div>
+                <CopyButton textToCopy={() => link} />
+              </div>
             </div>
-          </div>
+          )}
         </Show>
         <Show when={roomId()} keyed>
           {(id) => (
