@@ -1,5 +1,5 @@
 import "leaflet/dist/leaflet.css";
-import { createEffect, from, onMount } from "solid-js";
+import { createEffect, from, onCleanup, onMount } from "solid-js";
 import { reconcile } from "solid-js/store";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
@@ -18,7 +18,7 @@ function signalFromY<T extends Y.AbstractType<any>>(y: T) {
 }
 
 export interface MultiplayerLeafletProps {
-  roomName: () => string;
+  roomName: string;
 }
 
 export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
@@ -43,9 +43,20 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
     }).addTo(map);
 
     // clients connected to the same room-name share document updates
-    const provider = new WebrtcProvider(roomName(), ydoc, {
+    const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
       password: "password",
     });
+
+    onCleanup(() => {
+      provider.disconnect();
+      provider.destroy();
+    });
+
+    provider.awareness.on("update", console.log);
+
+    provider.awareness.setLocalState({ name: Math.random() });
+
+    map.on("mousemove", console.log);
 
     // Propagate Map UI events to Y state updates:
     const updateMapView = () => {

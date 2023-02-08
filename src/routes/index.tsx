@@ -1,5 +1,12 @@
 import { nanoid } from "nanoid";
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { useLocation, useNavigate } from "solid-start";
 import { CopyButton } from "~/components/CopyButton";
 import { MultiplayerLeaflet } from "~/components/MultiplayerLeaflet";
@@ -8,16 +15,24 @@ export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [shareLink, setShareLink] = createSignal("");
+  const [roomId, setRoomId] = createSignal<string | undefined>(
+    location.query.roomId
+  );
+  const [shareLink, setShareLink] = createSignal<string | undefined>();
+
+  createEffect(() => console.log(roomId()));
 
   onMount(() => {
     // Create a new random room ID if there isn't one:
-    if (!location.query.roomId) {
+    if (!roomId()) {
       navigate(`/?roomId=${nanoid()}`);
     }
 
     function updateLink() {
-      setTimeout(() => setShareLink(window.location.href), 0);
+      setTimeout(() => {
+        setRoomId(location.query.roomId);
+        setShareLink(window.location.href);
+      }, 0);
     }
     updateLink();
 
@@ -32,15 +47,19 @@ export default function Home() {
         <Show when={shareLink()}>
           <div class="flex flex-col items-center gap-1">
             <div>Share this link with someone to share a synchronized map:</div>
-            <div class="input-group flex gap-2 items-center justify-center w-auto border rounded-lg pl-2 border-gray-500">
-              <div class="">{shareLink()}</div>
+            <div class="input-group flex items-center justify-center w-auto border rounded-lg border-gray-500">
+              <div class="px-4">{shareLink()}</div>
               <CopyButton textToCopy={shareLink} />
             </div>
           </div>
         </Show>
-        <div class="w-[700px] h-[700px]">
-          <MultiplayerLeaflet roomName={() => location.query.id} />
-        </div>
+        <Show when={roomId()} keyed>
+          {(id) => (
+            <div class="w-[700px] h-[700px]">
+              <MultiplayerLeaflet roomName={id} />
+            </div>
+          )}
+        </Show>
       </main>
     </div>
   );
