@@ -20,8 +20,6 @@ export default function Home() {
   );
   const [shareLink, setShareLink] = createSignal<string | undefined>();
 
-  createEffect(() => console.log(roomId()));
-
   onMount(() => {
     // Create a new random room ID if there isn't one:
     if (!roomId()) {

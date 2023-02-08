@@ -1,9 +1,18 @@
 import "leaflet/dist/leaflet.css";
-import { createEffect, from, onCleanup, onMount } from "solid-js";
+import {
+  Accessor,
+  createEffect,
+  createSignal,
+  from,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { reconcile } from "solid-js/store";
-import { WebrtcProvider } from "y-webrtc";
+import { Room, WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { isEqual } from "lodash";
+import { isEqual, matchesProperty } from "lodash";
+import { LeafletMouseEvent, Map } from "leaflet";
+import { Awareness } from "y-protocols/awareness";
 
 /** Create a solidjs signal from a yjs type */
 function signalFromY<T extends Y.AbstractType<any>>(y: T) {
@@ -14,6 +23,18 @@ function signalFromY<T extends Y.AbstractType<any>>(y: T) {
     }
     y.observe(observer);
     return () => y.unobserve(observer);
+  });
+}
+
+function signalFromAwareness(awareness: Awareness) {
+  return from((set) => {
+    set(awareness.getStates());
+    function observer(_: unknown, room: Room | "local") {
+      if (typeof room === "string") return;
+      set(reconcile(room.awareness.getStates()));
+    }
+    awareness.on("update", observer);
+    return () => awareness.off("update", observer);
   });
 }
 
@@ -52,32 +73,61 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
       provider.destroy();
     });
 
-    provider.awareness.on("update", console.log);
+    const awareness = signalFromAwareness(provider.awareness);
 
-    provider.awareness.setLocalState({ name: Math.random() });
+    createEffect(() => console.log(awareness()))
 
-    map.on("mousemove", console.log);
+    bindMyMapCursorToAwareness(provider, map);
 
-    // Propagate Map UI events to Y state updates:
-    const updateMapView = () => {
-      const zoom = map.getZoom();
-      const center = [map.getCenter().lat, map.getCenter().lng];
-
-      const newPosition = { zoom, center };
-
-      if (!isEqual(newPosition, yState.get("position"))) {
-        yState.set("position", newPosition);
-      }
-    };
-    map.on("moveend", updateMapView);
-    updateMapView();
-
-    // Propagate Y state updates to Map UI state:
-    createEffect(() => {
-      const newPosition = stateSignal()?.position;
-      map.setView(newPosition.center, newPosition.zoom);
-    });
+    syncMapView(map, yState, stateSignal);
   });
 
   return <div class="w-full h-full" ref={div} />;
+}
+
+/** Two-way syncing of the Leaflet Map view with Yjs state. */
+function syncMapView(
+  map: Map,
+  yState: Y.Map<unknown>,
+  stateSignal: Accessor<{ [x: string]: any } | undefined>
+) {
+  // Propagate Map UI events to Y state updates:
+  const updateMapView = () => {
+    const zoom = map.getZoom();
+    const center = [map.getCenter().lat, map.getCenter().lng];
+
+    const newPosition = { zoom, center };
+
+    if (!isEqual(newPosition, yState.get("position"))) {
+      yState.set("position", newPosition);
+    }
+  };
+  map.on("moveend", updateMapView);
+  updateMapView();
+
+  // Propagate Y state updates to Map UI state:
+  createEffect(() => {
+    const newPosition = stateSignal()?.position;
+    map.setView(newPosition.center, newPosition.zoom);
+  });
+}
+
+/** Forward user's cursor position and pressed state to Yjs Awareness. */
+function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: Map) {
+  let mousePressed = false;
+  function updateMyPointer(e: LeafletMouseEvent) {
+    if (e.type === "mousedown") {
+      mousePressed = true;
+    }
+    if (e.type === "mouseup") {
+      mousePressed = false;
+    }
+
+    const mouseLatLng = [e.latlng.lat, e.latlng.lng] as const;
+    provider.awareness.setLocalState({ mouseLatLng, mousePressed });
+  }
+
+  map.on("mousemove", updateMyPointer);
+  map.on("mousedown", updateMyPointer);
+  map.on("mouseup", updateMyPointer);
 }
