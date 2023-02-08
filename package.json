@@ -18,7 +18,8 @@
     "solid-start": "^0.2.15",
     "undici": "^5.15.1",
     "y-webrtc": "^10.2.4",
-    "yjs": "^13.5.45"
+    "yjs": "^13.5.45",
+    "zod": "^3.20.3"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.0",

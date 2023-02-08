@@ -6,6 +6,7 @@ import { reconcile } from "solid-js/store";
 import { Awareness } from "y-protocols/awareness";
 import { Room, WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
+import { z } from "zod";
 
 /** Create a solidjs signal from a Yjs Type */
 function signalFromY<T extends Y.AbstractType<any>>(y: T) {
@@ -21,18 +22,20 @@ function signalFromY<T extends Y.AbstractType<any>>(y: T) {
 
 /** Create a solidjs signal from a Yjs Awareness */
 function signalFromAwareness(awareness: Awareness) {
-  return from<Map<number, {}>>(
-    (set) => {
-      set(awareness.getStates());
-      function observer(_: unknown, room: Room | "local") {
-        if (typeof room === "string") return;
-        set(reconcile(room.awareness.getStates()));
-      }
-      awareness.on("update", observer);
-      return () => awareness.off("update", observer);
+  return from<Map<number, {}>>((set) => {
+    function observer(_: unknown, room: Room | "local") {
+      if (typeof room === "string") return;
+      set(reconcile(room.awareness.getStates()));
     }
-  );
+    awareness.on("update", observer);
+    return () => awareness.off("update", observer);
+  });
 }
+
+const zLeafletAwarenessSchema = z.object({
+  mouseLatLng: z.tuple([z.number(), z.number()]),
+  mousePressed: z.boolean(),
+});
 
 export interface MultiplayerLeafletProps {
   roomName: string;
@@ -69,36 +72,7 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
       provider.destroy();
     });
 
-    const awareness = signalFromAwareness(provider.awareness);
-
-    const localMarkers = new Map<number, Marker<any>>();
-    createEffect(() => {
-      const awarenessMap = awareness();
-      if (!awarenessMap) return;
-
-      console.log({ awarenessMap });
-
-      const myClientId = provider.awareness.clientID;
-      for (const [clientId, state] of awarenessMap.entries() ?? []) {
-        if (clientId === myClientId) continue;
-
-        if (localMarkers.has(clientId)) {
-          const markerToUpdate = localMarkers.get(clientId);
-          markerToUpdate?.setLatLng(state.mouseLatLng);
-        } else {
-          const newMarker = L.marker(state.mouseLatLng).addTo(map);
-          localMarkers.set(clientId, newMarker);
-        }
-      }
-
-      // Delete a marker from the map when the cursor info is removed from awareness:
-      for (const [localClientId, marker] of localMarkers.entries()) {
-        if (!awarenessMap.has(localClientId)) {
-          marker.remove();
-          localMarkers.delete(localClientId);
-        }
-      }
-    });
+    await displayMarkersForPeerCursors(provider, map);
 
     bindMyMapCursorToAwareness(provider, map);
 
@@ -106,6 +80,44 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
   });
 
   return <div class="w-full h-full" ref={div} />;
+}
+
+async function displayMarkersForPeerCursors(
+  provider: WebrtcProvider,
+  map: LeafletMap
+) {
+  const L = await import("leaflet");
+
+  const awareness = signalFromAwareness(provider.awareness);
+
+  const localMarkers = new Map<number, Marker<any>>();
+  createEffect(() => {
+    const awarenessMap = awareness();
+    if (!awarenessMap) return;
+
+    const myClientId = provider.awareness.clientID;
+    for (const [clientId, rawState] of awarenessMap.entries() ?? []) {
+      if (clientId === myClientId) continue;
+
+      const state = zLeafletAwarenessSchema.parse(rawState);
+
+      if (localMarkers.has(clientId)) {
+        const markerToUpdate = localMarkers.get(clientId);
+        markerToUpdate?.setLatLng(state.mouseLatLng);
+      } else {
+        const newMarker = L.marker(state.mouseLatLng).addTo(map);
+        localMarkers.set(clientId, newMarker);
+      }
+    }
+
+    // Delete a marker from the map when the cursor info is removed from awareness:
+    for (const [localClientId, marker] of localMarkers.entries()) {
+      if (!awarenessMap.has(localClientId)) {
+        marker.remove();
+        localMarkers.delete(localClientId);
+      }
+    }
+  });
 }
 
 /** Two-way syncing of the Leaflet Map view with Yjs state. */
@@ -146,8 +158,12 @@ function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: LeafletMap) {
       mousePressed = false;
     }
 
-    const mouseLatLng = [e.latlng.lat, e.latlng.lng] as const;
-    provider.awareness.setLocalState({ mouseLatLng, mousePressed });
+    const myAwarenessState: typeof zLeafletAwarenessSchema["_output"] = {
+      mouseLatLng: [e.latlng.lat, e.latlng.lng],
+      mousePressed,
+    };
+
+    provider.awareness.setLocalState(myAwarenessState);
   }
 
   map.on("mousemove", updateMyPointer);
