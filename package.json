@@ -17,6 +17,7 @@
     "solid-js": "^1.6.9",
     "solid-start": "^0.2.15",
     "undici": "^5.15.1",
+    "unique-names-generator": "^4.7.1",
     "y-webrtc": "^10.2.4",
     "yjs": "^13.5.45",
     "zod": "^3.20.3"

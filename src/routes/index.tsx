@@ -1,14 +1,13 @@
 import { nanoid } from "nanoid";
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
+import { createEffect, onCleanup, onMount } from "solid-js";
 import { createStore } from "solid-js/store";
 import { useLocation, useNavigate } from "solid-start";
+import {
+  adjectives,
+  animals,
+  colors,
+  uniqueNamesGenerator,
+} from "unique-names-generator";
 import { CopyButton } from "~/components/CopyButton";
 import { MultiplayerLeaflet } from "~/components/MultiplayerLeaflet";
 
@@ -18,10 +17,26 @@ export default function Home() {
 
   const [store, setStore] = createStore({
     roomId: location.query.roomId as string | undefined,
+    username: "",
     shareLink: undefined as string | undefined,
   });
 
+  createEffect(
+    () => store.username && localStorage.setItem("username", store.username)
+  );
+
   onMount(() => {
+    // Get the stored username, otherwise generate a random one:
+    setStore({
+      username:
+        localStorage.getItem("username") ||
+        uniqueNamesGenerator({
+          dictionaries: [adjectives, colors, animals],
+          length: 3,
+          separator: "-",
+        }),
+    });
+
     // Create a new random room ID if there isn't one:
     if (!store.roomId) {
       navigate(`/?roomId=${nanoid()}`);
@@ -56,9 +71,29 @@ export default function Home() {
         )}
         {store.roomId && (
           <div class="w-[700px] h-[700px]">
-            <MultiplayerLeaflet roomName={store.roomId} />
+            <MultiplayerLeaflet
+              roomName={store.roomId}
+              username={store.username}
+            />
           </div>
         )}
+        <div class="flex justify-center">
+          <label class="form-control flex-row gap-1 w-[400px]">
+            <div class="label">
+              <span class="label-text font-bold whitespace-nowrap">
+                Your Username
+              </span>
+            </div>
+            <input
+              type="text"
+              placeholder="Type here"
+              class="input input-bordered w-full max-w-xs"
+              value={store.username}
+              // @ts-expect-error should always work:
+              onInput={(e) => setStore({ username: e.target.value })}
+            />
+          </label>
+        </div>
       </main>
     </div>
   );

@@ -34,16 +34,18 @@ function signalFromAwareness(awareness: Awareness) {
 }
 
 const zLeafletAwarenessSchema = z.object({
+  username: z.string().max(50),
   mouseLatLng: z.tuple([z.number(), z.number()]),
   mousePressed: z.boolean(),
 });
 
 export interface MultiplayerLeafletProps {
   roomName: string;
+  username: string;
 }
 
-export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
-  let div: HTMLDivElement | undefined = undefined;
+export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
+  const div = (<div class="w-full h-full rounded-md" />) as HTMLDivElement;
 
   const ydoc = new Y.Doc();
 
@@ -51,10 +53,6 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
   const stateSignal = signalFromY(yState);
 
   onMount(async () => {
-    if (!div) {
-      return;
-    }
-
     // Setup the Leaflet map:
     const L = await import("leaflet");
     const map = L.map(div).setView([51.505, -0.09], 13);
@@ -67,9 +65,11 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
     window.addEventListener("blur", fireMapMouseUpEvent);
 
     // clients connected to the same room-name share document updates
-    const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
-      password: "password",
-    });
+    const provider = new WebrtcProvider(
+      `shared-leaflet-${props.roomName}`,
+      ydoc,
+      { password: "password" }
+    );
 
     onCleanup(() => {
       window.removeEventListener("mouseup", fireMapMouseUpEvent);
@@ -79,12 +79,12 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
 
     await displayMarkersForPeerCursors(provider, map);
 
-    bindMyMapCursorToAwareness(provider, map);
+    bindMyMapCursorToAwareness(provider, map, props.username);
 
     syncMapView(map, yState, stateSignal);
   });
 
-  return <div class="w-full h-full rounded-md" ref={div} />;
+  return div;
 }
 
 async function displayMarkersForPeerCursors(
@@ -166,7 +166,7 @@ function syncMapView(
   map.on("moveend", updateYState);
 
   // Update the Y state while the user's mouse moves the map (throttled):
-  const moveUpdatesPerSecond = 30;
+  const moveUpdatesPerSecond = 60;
   map.on(
     "move",
     throttle(() => mousedown && updateYState(), 1000 / moveUpdatesPerSecond)
@@ -189,7 +189,11 @@ function syncMapView(
 }
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
-function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: LeafletMap) {
+function bindMyMapCursorToAwareness(
+  provider: WebrtcProvider,
+  map: LeafletMap,
+  username: string
+) {
   let mousePressed = false;
   function updateMyPointer(e: LeafletMouseEvent) {
     if (e.type === "mousedown") {
@@ -202,6 +206,7 @@ function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: LeafletMap) {
     if (!e.latlng) return;
 
     const myAwarenessState: typeof zLeafletAwarenessSchema["_output"] = {
+      username,
       mouseLatLng: [e.latlng.lat, e.latlng.lng],
       mousePressed,
     };
