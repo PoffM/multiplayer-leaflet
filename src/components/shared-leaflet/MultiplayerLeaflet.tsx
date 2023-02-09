@@ -1,23 +1,14 @@
-import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
+import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { debounce, isEqual, throttle } from "lodash";
-import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
 import { Accessor, createEffect, onCleanup, onMount } from "solid-js";
-import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { z } from "zod";
+import { signalFromY } from "../../solid-yjs/signalFromY";
 import {
-  AwarenessChanges,
-  signalFromAwareness,
-} from "../solid-yjs/signalFromAwareness";
-import { signalFromY } from "../solid-yjs/signalFromY";
-
-const zLeafletAwarenessSchema = z.object({
-  username: z.string().max(50),
-  mouseLatLng: z.tuple([z.number(), z.number()]),
-  mousePressed: z.boolean(),
-});
+  bindMyMapCursorToAwareness,
+  displayPeerCursors,
+} from "./live-cursors";
 
 export interface MultiplayerLeafletProps {
   roomName: string;
@@ -67,62 +58,6 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   return div;
 }
 
-async function displayPeerCursors(provider: WebrtcProvider, map: LeafletMap) {
-  const L = await import("leaflet");
-
-  const awarenessMap = signalFromAwareness(
-    provider.awareness,
-    zLeafletAwarenessSchema
-  );
-
-  const cleanupFunctions = new Map<number, () => void>();
-  provider.awareness.on("update", (changes: AwarenessChanges) => {
-    for (const clientId of changes.added) {
-      const iconRoot = (<div />) as HTMLElement;
-
-      const initialState = awarenessMap[clientId];
-      if (!initialState) return;
-
-      const marker = L.marker(initialState.mouseLatLng, {
-        icon: L.divIcon({ html: iconRoot }),
-      }).addTo(map);
-
-      function Icon(props: {
-        state: () => typeof zLeafletAwarenessSchema["_output"] | undefined;
-      }) {
-        return (
-          <div>
-            {props.state()?.mousePressed ? (
-              <FaSolidHandBackFist size="20px" fill="green" />
-            ) : (
-              <FaSolidHand size="20px" fill="green" />
-            )}
-          </div>
-        );
-      }
-
-      createEffect(() =>
-        marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
-      );
-
-      const disposeSolid = render(
-        () => <Icon state={() => awarenessMap[clientId]} />,
-        iconRoot
-      );
-
-      cleanupFunctions.set(clientId, () => {
-        disposeSolid();
-        marker.remove();
-      });
-    }
-
-    for (const clientId of changes.removed) {
-      cleanupFunctions.get(clientId)?.();
-      cleanupFunctions.delete(clientId);
-    }
-  });
-}
-
 /** Two-way syncing of the Leaflet Map view with Yjs state, using solid js signals. */
 function syncMapView(
   map: LeafletMap,
@@ -169,35 +104,4 @@ function syncMapView(
       map.setView(newPosition.center, newPosition.zoom);
     }
   });
-}
-
-/** Forward user's cursor position and pressed state to Yjs Awareness. */
-function bindMyMapCursorToAwareness(
-  provider: WebrtcProvider,
-  map: LeafletMap,
-  username: string
-) {
-  let mousePressed = false;
-  function updateMyPointer(e: LeafletMouseEvent) {
-    if (e.type === "mousedown") {
-      mousePressed = true;
-    }
-    if (e.type === "mouseup") {
-      mousePressed = false;
-    }
-
-    if (!e.latlng) return;
-
-    const myAwarenessState: typeof zLeafletAwarenessSchema["_output"] = {
-      username,
-      mouseLatLng: [e.latlng.lat, e.latlng.lng],
-      mousePressed,
-    };
-
-    provider.awareness.setLocalState(myAwarenessState);
-  }
-
-  map.on("mousemove", updateMyPointer);
-  map.on("mousedown", updateMyPointer);
-  map.on("mouseup", updateMyPointer);
 }

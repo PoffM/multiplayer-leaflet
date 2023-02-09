@@ -9,7 +9,7 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { CopyButton } from "~/components/CopyButton";
-import { MultiplayerLeaflet } from "~/components/MultiplayerLeaflet";
+import { MultiplayerLeaflet } from "~/components/shared-leaflet/MultiplayerLeaflet";
 
 export default function Home() {
   const location = useLocation();
