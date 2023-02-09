@@ -1,6 +1,7 @@
 import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { isEqual } from "lodash";
+import { debounce, isEqual, throttle } from "lodash";
+import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
 import { Accessor, createEffect, from, onCleanup, onMount } from "solid-js";
 import { reconcile } from "solid-js/store";
 import { Awareness } from "y-protocols/awareness";
@@ -61,6 +62,9 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
+    const fireMapMouseUpEvent = () => map.fireEvent("mouseup");
+    window.addEventListener("mouseup", fireMapMouseUpEvent);
+    window.addEventListener("blur", fireMapMouseUpEvent);
 
     // clients connected to the same room-name share document updates
     const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
@@ -68,6 +72,7 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
     });
 
     onCleanup(() => {
+      window.removeEventListener("mouseup", fireMapMouseUpEvent);
       provider.disconnect();
       provider.destroy();
     });
@@ -79,7 +84,7 @@ export function MultiplayerLeaflet({ roomName }: MultiplayerLeafletProps) {
     syncMapView(map, yState, stateSignal);
   });
 
-  return <div class="w-full h-full" ref={div} />;
+  return <div class="w-full h-full rounded-md" ref={div} />;
 }
 
 async function displayMarkersForPeerCursors(
@@ -87,6 +92,15 @@ async function displayMarkersForPeerCursors(
   map: LeafletMap
 ) {
   const L = await import("leaflet");
+
+  const markerIcons = {
+    grabbing: L.divIcon({
+      html: (<FaSolidHandBackFist size="20px" fill="green" />) as HTMLElement,
+    }),
+    default: L.divIcon({
+      html: (<FaSolidHand size="20px" fill="green" />) as HTMLElement,
+    }),
+  };
 
   const awareness = signalFromAwareness(provider.awareness);
 
@@ -104,8 +118,14 @@ async function displayMarkersForPeerCursors(
       if (localMarkers.has(clientId)) {
         const markerToUpdate = localMarkers.get(clientId);
         markerToUpdate?.setLatLng(state.mouseLatLng);
+
+        markerToUpdate?.setIcon(
+          state.mousePressed ? markerIcons.grabbing : markerIcons.default
+        );
       } else {
-        const newMarker = L.marker(state.mouseLatLng).addTo(map);
+        const newMarker = L.marker(state.mouseLatLng, {
+          icon: markerIcons.default,
+        }).addTo(map);
         localMarkers.set(clientId, newMarker);
       }
     }
@@ -120,14 +140,18 @@ async function displayMarkersForPeerCursors(
   });
 }
 
-/** Two-way syncing of the Leaflet Map view with Yjs state. */
+/** Two-way syncing of the Leaflet Map view with Yjs state, using solid js signals. */
 function syncMapView(
   map: LeafletMap,
   yState: Y.Map<unknown>,
   stateSignal: Accessor<{ [x: string]: any } | undefined>
 ) {
-  // Propagate Map UI events to Y state updates:
-  const updateMapView = () => {
+  let mousedown = false;
+  map.on("mousedown", () => (mousedown = true));
+  map.on("mouseup", () => (mousedown = false));
+
+  /** Propagates Map UI events to Y state updates: */
+  function updateYState() {
     const zoom = map.getZoom();
     const center = [map.getCenter().lat, map.getCenter().lng];
 
@@ -136,14 +160,31 @@ function syncMapView(
     if (!isEqual(newPosition, yState.get("position"))) {
       yState.set("position", newPosition);
     }
-  };
-  map.on("moveend", updateMapView);
-  updateMapView();
+  }
+
+  // Update Y state when the user stops moving the map:
+  map.on("moveend", updateYState);
+
+  // Update the Y state while the user's mouse moves the map (throttled):
+  const moveUpdatesPerSecond = 30;
+  map.on(
+    "move",
+    throttle(() => mousedown && updateYState(), 1000 / moveUpdatesPerSecond)
+  );
+  map.on(
+    "move",
+    debounce(() => mousedown && updateYState(), 1000 / moveUpdatesPerSecond, {
+      leading: false,
+      trailing: true,
+    })
+  );
 
   // Propagate Y state updates to Map UI state:
   createEffect(() => {
     const newPosition = stateSignal()?.position;
-    map.setView(newPosition.center, newPosition.zoom);
+    if (!mousedown) {
+      map.setView(newPosition.center, newPosition.zoom);
+    }
   });
 }
 
@@ -157,6 +198,8 @@ function bindMyMapCursorToAwareness(provider: WebrtcProvider, map: LeafletMap) {
     if (e.type === "mouseup") {
       mousePressed = false;
     }
+
+    if (!e.latlng) return;
 
     const myAwarenessState: typeof zLeafletAwarenessSchema["_output"] = {
       mouseLatLng: [e.latlng.lat, e.latlng.lng],
