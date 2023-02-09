@@ -21,6 +21,15 @@ export default function Home() {
     shareLink: undefined as string | undefined,
   });
 
+  function updateLink() {
+    setTimeout(() => {
+      setStore({
+        roomId: location.query.roomId,
+        shareLink: window.location.href,
+      });
+    }, 0);
+  }
+
   createEffect(
     () => store.username && localStorage.setItem("username", store.username)
   );
@@ -42,19 +51,11 @@ export default function Home() {
       navigate(`/?roomId=${nanoid()}`);
     }
 
-    function updateLink() {
-      setTimeout(() => {
-        setStore({
-          roomId: location.query.roomId,
-          shareLink: window.location.href,
-        });
-      }, 0);
-    }
     updateLink();
-
     window.addEventListener("popstate", updateLink);
-    onCleanup(() => window.removeEventListener("popstate", updateLink));
   });
+
+  onCleanup(() => window.removeEventListener("popstate", updateLink));
 
   return (
     <div class="fixed inset-0 flex items-center justify-center">
