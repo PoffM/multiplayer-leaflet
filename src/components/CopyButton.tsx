@@ -2,16 +2,16 @@ import { clsx } from "clsx";
 import { createSignal } from "solid-js";
 
 export interface CopyButtonProps {
-  textToCopy: () => string;
+  textToCopy: string;
 }
 
-export function CopyButton({ textToCopy }: CopyButtonProps) {
+export function CopyButton(props: CopyButtonProps) {
   const [showCopiedMessage, setShowCopiedMessage] = createSignal(false);
 
   let timeout: NodeJS.Timeout;
   function copyText() {
     clearTimeout(timeout);
-    navigator.clipboard.writeText(textToCopy());
+    navigator.clipboard.writeText(props.textToCopy);
     setShowCopiedMessage(true);
     timeout = setTimeout(() => setShowCopiedMessage(false), 2000);
   }
