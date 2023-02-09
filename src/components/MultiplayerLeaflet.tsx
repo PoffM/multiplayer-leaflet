@@ -2,36 +2,15 @@ import type { LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { debounce, isEqual, throttle } from "lodash";
 import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
-import { Accessor, createEffect, from, onCleanup, onMount } from "solid-js";
-import { reconcile } from "solid-js/store";
-import { Awareness } from "y-protocols/awareness";
-import { Room, WebrtcProvider } from "y-webrtc";
+import { Accessor, createEffect, onCleanup, onMount } from "solid-js";
+import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { z } from "zod";
-
-/** Create a solidjs signal from a Yjs Type */
-function signalFromY<T extends Y.AbstractType<any>>(y: T) {
-  return from<ReturnType<T["toJSON"]>>((set) => {
-    set(y.toJSON());
-    function observer(a: Y.YEvent<Y.AbstractType<T>>) {
-      set(reconcile(a.target.toJSON()));
-    }
-    y.observe(observer);
-    return () => y.unobserve(observer);
-  });
-}
-
-/** Create a solidjs signal from a Yjs Awareness */
-function signalFromAwareness(awareness: Awareness) {
-  return from<Map<number, {}>>((set) => {
-    function observer(_: unknown, room: Room | "local") {
-      if (typeof room === "string") return;
-      set(reconcile(room.awareness.getStates()));
-    }
-    awareness.on("update", observer);
-    return () => awareness.off("update", observer);
-  });
-}
+import {
+  AwarenessChanges,
+  signalFromAwareness,
+} from "../solid-yjs/signalFromAwareness";
+import { signalFromY } from "../solid-yjs/signalFromY";
 
 const zLeafletAwarenessSchema = z.object({
   username: z.string().max(50),
@@ -102,40 +81,33 @@ async function displayMarkersForPeerCursors(
     }),
   };
 
-  const awareness = signalFromAwareness(provider.awareness);
+  const awarenessMap = signalFromAwareness(
+    provider.awareness,
+    zLeafletAwarenessSchema
+  );
 
   const localMarkers = new Map<number, Marker<any>>();
-  createEffect(() => {
-    const awarenessMap = awareness();
-    if (!awarenessMap) return;
-
-    const myClientId = provider.awareness.clientID;
-    for (const [clientId, rawState] of awarenessMap.entries() ?? []) {
-      if (clientId === myClientId) continue;
-
-      const state = zLeafletAwarenessSchema.parse(rawState);
-
-      if (localMarkers.has(clientId)) {
-        const markerToUpdate = localMarkers.get(clientId);
-        markerToUpdate?.setLatLng(state.mouseLatLng);
-
-        markerToUpdate?.setIcon(
-          state.mousePressed ? markerIcons.grabbing : markerIcons.default
-        );
-      } else {
-        const newMarker = L.marker(state.mouseLatLng, {
-          icon: markerIcons.default,
-        }).addTo(map);
-        localMarkers.set(clientId, newMarker);
-      }
+  provider.awareness.on("update", (changes: AwarenessChanges) => {
+    for (const clientId of changes.added) {
+      const state = awarenessMap[clientId];
+      const newMarker = L.marker(state.mouseLatLng, {
+        icon: markerIcons.default,
+      }).addTo(map);
+      localMarkers.set(clientId, newMarker);
     }
 
-    // Delete a marker from the map when the cursor info is removed from awareness:
-    for (const [localClientId, marker] of localMarkers.entries()) {
-      if (!awarenessMap.has(localClientId)) {
-        marker.remove();
-        localMarkers.delete(localClientId);
-      }
+    for (const clientId of changes.updated) {
+      const state = awarenessMap[clientId];
+      const markerToUpdate = localMarkers.get(clientId);
+      markerToUpdate?.setLatLng(state.mouseLatLng);
+
+      markerToUpdate?.setIcon(
+        state.mousePressed ? markerIcons.grabbing : markerIcons.default
+      );
+    }
+    for (const clientId of changes.removed) {
+      localMarkers.get(clientId)?.remove();
+      localMarkers.delete(clientId);
     }
   });
 }
