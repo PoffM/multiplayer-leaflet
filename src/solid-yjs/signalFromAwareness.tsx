@@ -15,7 +15,7 @@ export function signalFromAwareness<T>(
   awareness: Awareness,
   stateSchema: ZodSchema<T>
 ) {
-  const store = createMutable<{ [clientId: number]: T }>({});
+  const store = createMutable<{ [clientId: number]: T | undefined }>({});
 
   function observer(changes: AwarenessChanges, room: Room | "local") {
     batch(() => {

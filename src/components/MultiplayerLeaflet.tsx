@@ -3,6 +3,7 @@ import "leaflet/dist/leaflet.css";
 import { debounce, isEqual, throttle } from "lodash";
 import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
 import { Accessor, createEffect, onCleanup, onMount } from "solid-js";
+import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { z } from "zod";
@@ -56,7 +57,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
       provider.destroy();
     });
 
-    await displayMarkersForPeerCursors(provider, map);
+    await displayPeerCursors(provider, map);
 
     bindMyMapCursorToAwareness(provider, map, props.username);
 
@@ -66,48 +67,58 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   return div;
 }
 
-async function displayMarkersForPeerCursors(
-  provider: WebrtcProvider,
-  map: LeafletMap
-) {
+async function displayPeerCursors(provider: WebrtcProvider, map: LeafletMap) {
   const L = await import("leaflet");
-
-  const markerIcons = {
-    grabbing: L.divIcon({
-      html: (<FaSolidHandBackFist size="20px" fill="green" />) as HTMLElement,
-    }),
-    default: L.divIcon({
-      html: (<FaSolidHand size="20px" fill="green" />) as HTMLElement,
-    }),
-  };
 
   const awarenessMap = signalFromAwareness(
     provider.awareness,
     zLeafletAwarenessSchema
   );
 
-  const localMarkers = new Map<number, Marker<any>>();
+  const cleanupFunctions = new Map<number, () => void>();
   provider.awareness.on("update", (changes: AwarenessChanges) => {
     for (const clientId of changes.added) {
-      const state = awarenessMap[clientId];
-      const newMarker = L.marker(state.mouseLatLng, {
-        icon: markerIcons.default,
+      const iconRoot = (<div />) as HTMLElement;
+
+      const initialState = awarenessMap[clientId];
+      if (!initialState) return;
+
+      const marker = L.marker(initialState.mouseLatLng, {
+        icon: L.divIcon({ html: iconRoot }),
       }).addTo(map);
-      localMarkers.set(clientId, newMarker);
-    }
 
-    for (const clientId of changes.updated) {
-      const state = awarenessMap[clientId];
-      const markerToUpdate = localMarkers.get(clientId);
-      markerToUpdate?.setLatLng(state.mouseLatLng);
+      function Icon(props: {
+        state: () => typeof zLeafletAwarenessSchema["_output"] | undefined;
+      }) {
+        return (
+          <div>
+            {props.state()?.mousePressed ? (
+              <FaSolidHandBackFist size="20px" fill="green" />
+            ) : (
+              <FaSolidHand size="20px" fill="green" />
+            )}
+          </div>
+        );
+      }
 
-      markerToUpdate?.setIcon(
-        state.mousePressed ? markerIcons.grabbing : markerIcons.default
+      createEffect(() =>
+        marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
       );
+
+      const disposeSolid = render(
+        () => <Icon state={() => awarenessMap[clientId]} />,
+        iconRoot
+      );
+
+      cleanupFunctions.set(clientId, () => {
+        disposeSolid();
+        marker.remove();
+      });
     }
+
     for (const clientId of changes.removed) {
-      localMarkers.get(clientId)?.remove();
-      localMarkers.delete(clientId);
+      cleanupFunctions.get(clientId)?.();
+      cleanupFunctions.delete(clientId);
     }
   });
 }
@@ -154,7 +165,7 @@ function syncMapView(
   // Propagate Y state updates to Map UI state:
   createEffect(() => {
     const newPosition = stateSignal()?.position;
-    if (!mousedown) {
+    if (!mousedown && newPosition) {
       map.setView(newPosition.center, newPosition.zoom);
     }
   });
