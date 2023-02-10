@@ -1,4 +1,4 @@
-import { Map as LeafletMap } from "leaflet";
+import { LeafletEvent, Map as LeafletMap } from "leaflet";
 import { debounce, isEqual, throttle } from "lodash";
 import { Accessor, createEffect } from "solid-js";
 import * as Y from "yjs";
@@ -7,11 +7,8 @@ import * as Y from "yjs";
 export function syncMapView(
   map: LeafletMap,
   yState: Y.Map<unknown>,
-  stateSignal: Accessor<{ [x: string]: any; } | undefined>) {
-  let mousedown = false;
-  map.on("mousedown", () => (mousedown = true));
-  map.on("mouseup", () => (mousedown = false));
-
+  stateSignal: Accessor<{ [x: string]: any } | undefined>
+) {
   /** Propagates Map UI events to Y state updates: */
   function updateYState() {
     const zoom = map.getZoom();
@@ -24,28 +21,43 @@ export function syncMapView(
     }
   }
 
+  function handleMove(e: LeafletEvent) {
+    /** True when the local user is dragging the map. */
+    // @ts-expect-error Uses a private field on the leaflet event
+    const draggedByLocalUser = !!e.originalEvent;
+
+    /** True when the leaflet map is doing an animated inertia drift after the user flicks the map. */
+    const isDrifting = e.target._panAnim?._inProgress;
+
+    if (draggedByLocalUser || isDrifting) {
+      updateYState();
+    }
+  }
+
+  // Update the shared Y state when the user moves the map:
+  const moveUpdatesPerSecond = 60;
+  map.on("move", throttle(handleMove, 1000 / moveUpdatesPerSecond));
+  map.on("move", debounce(handleMove, 1000 / moveUpdatesPerSecond));
   // Update Y state when the user stops moving the map:
   map.on("moveend", updateYState);
-
-  // Update the Y state while the user's mouse moves the map (throttled):
-  const moveUpdatesPerSecond = 60;
-  map.on(
-    "move",
-    throttle(() => mousedown && updateYState(), 1000 / moveUpdatesPerSecond)
-  );
-  map.on(
-    "move",
-    debounce(() => mousedown && updateYState(), 1000 / moveUpdatesPerSecond, {
-      leading: false,
-      trailing: true,
-    })
-  );
 
   // Propagate Y state updates to Map UI state:
   createEffect(() => {
     const newPosition = stateSignal()?.position;
-    if (!mousedown && newPosition) {
-      map.setView(newPosition.center, newPosition.zoom);
+
+    if (!newPosition) return;
+
+    const currentCenter = map.getCenter();
+    const currentPosition = {
+      center: [currentCenter.lat, currentCenter.lng],
+      zoom: map.getZoom(),
+    };
+
+    if (!isEqual(currentPosition, newPosition)) {
+      map.setView(newPosition.center, newPosition.zoom, {
+        animate: false,
+        duration: 0,
+      });
     }
   });
 }
