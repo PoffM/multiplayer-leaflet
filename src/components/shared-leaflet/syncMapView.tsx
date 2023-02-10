@@ -16,6 +16,7 @@ export function syncMapView(
 
     const newPosition = { zoom, center };
 
+    // Push the new state if it changed:
     if (!isEqual(newPosition, yState.get("position"))) {
       yState.set("position", newPosition);
     }
@@ -29,17 +30,20 @@ export function syncMapView(
     /** True when the leaflet map is doing an animated inertia drift after the user flicks the map. */
     const isDrifting = e.target._panAnim?._inProgress;
 
-    if (draggedByLocalUser || isDrifting) {
+    if (draggedByLocalUser || isDrifting || e.type === "zoomend") {
       updateYState();
     }
   }
 
-  // Update the shared Y state when the user moves the map:
+  // Update the shared Y state:
+  // Whlie the user drags the map:
   const moveUpdatesPerSecond = 60;
   map.on("move", throttle(handleMove, 1000 / moveUpdatesPerSecond));
   map.on("move", debounce(handleMove, 1000 / moveUpdatesPerSecond));
-  // Update Y state when the user stops moving the map:
-  map.on("moveend", updateYState);
+  // After a zoom:
+  map.on("moveend", handleMove);
+  // After the user stops moving the map:
+  map.on("zoomend", handleMove);
 
   // Propagate Y state updates to Map UI state:
   createEffect(() => {
@@ -53,8 +57,10 @@ export function syncMapView(
       zoom: map.getZoom(),
     };
 
-    if (!isEqual(currentPosition, newPosition)) {
-      map.setView(newPosition.center, newPosition.zoom, {
+    if (currentPosition.zoom !== newPosition.zoom) {
+      map.setView(newPosition.center, newPosition.zoom);
+    } else if (!isEqual(currentPosition, newPosition)) {
+      map.setView(newPosition.center, undefined, {
         animate: false,
         duration: 0,
       });
