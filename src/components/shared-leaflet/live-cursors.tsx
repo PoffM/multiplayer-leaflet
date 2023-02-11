@@ -90,6 +90,12 @@ export async function displayPeerCursors(
         icon: L.divIcon({ html: iconRoot }),
       }).addTo(map);
 
+      const markerElement = marker.getElement();
+      if (markerElement) {
+        markerElement.style.border = "none";
+        markerElement.style.backgroundColor = "transparent";
+      }
+
       createEffect(() =>
         marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
       );
