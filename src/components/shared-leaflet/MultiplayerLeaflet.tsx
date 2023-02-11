@@ -40,7 +40,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     });
 
     await displayPeerCursors(provider, map);
-    bindMyMapCursorToAwareness(provider, map, props.username);
+    bindMyMapCursorToAwareness(provider, map, () => props.username);
 
     syncMapView(map, yState, stateSignal);
   });

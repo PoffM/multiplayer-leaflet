@@ -1,7 +1,8 @@
 import type { Map as LeafletMap } from "leaflet";
 import { LeafletMouseEvent } from "leaflet";
 import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
-import { createEffect } from "solid-js";
+import { batch, createEffect } from "solid-js";
+import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import { z } from "zod";
@@ -20,31 +21,42 @@ export const zLeafletAwarenessSchema = z.object({
 export function bindMyMapCursorToAwareness(
   provider: WebrtcProvider,
   map: LeafletMap,
-  username: string
+  username: () => string
 ) {
-  let mousePressed = false;
+  const localAwarenessStore = createMutable<
+    Pick<
+      typeof zLeafletAwarenessSchema["_output"],
+      "mouseLatLng" | "mousePressed"
+    >
+  >({
+    mousePressed: false,
+    mouseLatLng: [0, 0],
+  });
+
   function updateMyPointer(e: LeafletMouseEvent) {
-    if (e.type === "mousedown") {
-      mousePressed = true;
-    }
-    if (e.type === "mouseup") {
-      mousePressed = false;
-    }
+    batch(() => {
+      if (e.type === "mousedown") {
+        localAwarenessStore.mousePressed = true;
+      }
+      if (e.type === "mouseup") {
+        localAwarenessStore.mousePressed = false;
+      }
 
-    if (!e.latlng) return;
-
-    const myAwarenessState: typeof zLeafletAwarenessSchema["_output"] = {
-      username,
-      mouseLatLng: [e.latlng.lat, e.latlng.lng],
-      mousePressed,
-    };
-
-    provider.awareness.setLocalState(myAwarenessState);
+      if (!e.latlng) return;
+      localAwarenessStore.mouseLatLng = [e.latlng.lat, e.latlng.lng];
+    });
   }
 
   map.on("mousemove", updateMyPointer);
   map.on("mousedown", updateMyPointer);
   map.on("mouseup", updateMyPointer);
+
+  createEffect(() => {
+    provider.awareness.setLocalState({
+      ...localAwarenessStore,
+      username: username(),
+    });
+  });
 }
 
 export async function displayPeerCursors(
@@ -70,26 +82,12 @@ export async function displayPeerCursors(
         icon: L.divIcon({ html: iconRoot }),
       }).addTo(map);
 
-      function Icon(props: {
-        state: () => typeof zLeafletAwarenessSchema["_output"] | undefined;
-      }) {
-        return (
-          <div>
-            {props.state()?.mousePressed ? (
-              <FaSolidHandBackFist size="20px" fill="green" />
-            ) : (
-              <FaSolidHand size="20px" fill="green" />
-            )}
-          </div>
-        );
-      }
-
       createEffect(() =>
         marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
       );
 
       const disposeSolid = render(
-        () => <Icon state={() => awarenessMap[clientId]} />,
+        () => <CursorIcon state={() => awarenessMap[clientId]} />,
         iconRoot
       );
 
@@ -104,4 +102,25 @@ export async function displayPeerCursors(
       cleanupFunctions.delete(clientId);
     }
   });
+}
+
+function CursorIcon(props: {
+  state: () => typeof zLeafletAwarenessSchema["_output"] | undefined;
+}) {
+  return (
+    <div class="relative">
+      <div class="absolute">
+        <div class="space-y-1">
+          {props.state()?.mousePressed ? (
+            <FaSolidHandBackFist size="20px" fill="green" />
+          ) : (
+            <FaSolidHand size="20px" fill="green" />
+          )}
+          <div class="text-black py-1 px-2 rounded-md bg-green-500 font-bold whitespace-nowrap">
+            <span>{props.state()?.username}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
