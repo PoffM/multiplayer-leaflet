@@ -4,7 +4,8 @@ import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { signalFromY } from "../../solid-yjs/signalFromY";
 import { USER_COLORS } from "../ColorPicker";
-import { bindMyMapCursorToAwareness, displayUserCursors } from "./live-cursors";
+import { displayUserCursors } from "./live-cursors/displayUserCursors";
+import { shareMyCursor } from "./live-cursors/shareMyCursor";
 import { syncMapView } from "./syncMapView";
 
 export interface MultiplayerLeafletProps {
@@ -41,7 +42,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
       password: "password",
     });
 
-    bindMyMapCursorToAwareness(
+    shareMyCursor(
       provider,
       map,
       () => props.username,
