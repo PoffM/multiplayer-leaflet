@@ -9,7 +9,7 @@ export function CursorIcon(props: {
 }) {
   return (
     <div class="relative">
-      <div class="absolute">
+      <div class="absolute -left-1 -top-1">
         <div class="space-y-1">
           {props.state?.mousePressed ? (
             <FaSolidHandBackFist
