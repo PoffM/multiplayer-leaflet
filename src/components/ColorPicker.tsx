@@ -1,5 +1,4 @@
 import { createSignal, For, onCleanup } from "solid-js";
-import { z } from "zod";
 
 export const USER_COLORS = {
   Black: "#000000",
@@ -40,7 +39,7 @@ export function ColorPicker(props: ColorPickerProps) {
         onClick={() => setColorPickerOpen((it) => !it)}
       />
       {colorPickerOpen() && (
-        <div class="absolute left-1/2">
+        <div class="absolute top-3/4 right-0">
           <div
             class="bg-base-300 rounded-md p-4 grid gap-2"
             style={{ "grid-template-columns": "repeat(4, auto)" }}
@@ -52,7 +51,8 @@ export function ColorPicker(props: ColorPickerProps) {
                   class="w-[2rem] aspect-square rounded-md"
                   style={{ "background-color": hex }}
                   title={colorName}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
                     // @ts-expect-error color should always be one of the object keys:
                     props.onChange(colorName);
                     setColorPickerOpen(false);

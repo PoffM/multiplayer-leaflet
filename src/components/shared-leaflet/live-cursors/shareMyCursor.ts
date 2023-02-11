@@ -1,5 +1,4 @@
-import { Map as LeafletMap } from "leaflet";
-import { LeafletMouseEvent } from "leaflet";
+import type { LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import { batch, createEffect } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { WebrtcProvider } from "y-webrtc";
@@ -28,8 +27,7 @@ export function shareMyCursor(
         localCursorStateStore.mousePressed = false;
       }
 
-      if (!e.latlng)
-        return;
+      if (!e.latlng) return;
       localCursorStateStore.mouseLatLng = [e.latlng.lat, e.latlng.lng];
     });
   }

@@ -88,7 +88,7 @@ export default function Home() {
             />
           </div>
         )}
-        <div class="flex justify-center gap-2">
+        <div class="flex justify-center gap-4">
           <label class="form-control flex-row gap-1 w-[400px]">
             <div class="label">
               <span class="label-text font-bold whitespace-nowrap">
@@ -104,10 +104,17 @@ export default function Home() {
               onInput={(e) => setStore({ username: e.target.value })}
             />
           </label>
-          <ColorPicker
-            color={store.userColor}
-            onChange={(newColor) => setStore({ userColor: newColor })}
-          />
+          <label class="form-control flex-row gap-1">
+            <div class="label">
+              <span class="label-text font-bold whitespace-nowrap">
+                Your Color
+              </span>
+            </div>
+            <ColorPicker
+              color={store.userColor}
+              onChange={(newColor) => setStore({ userColor: newColor })}
+            />
+          </label>
         </div>
       </main>
     </div>

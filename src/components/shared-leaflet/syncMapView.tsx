@@ -1,4 +1,4 @@
-import { LeafletEvent, Map as LeafletMap } from "leaflet";
+import type { LeafletEvent, Map as LeafletMap } from "leaflet";
 import { debounce, isEqual, throttle } from "lodash";
 import { Accessor, createEffect } from "solid-js";
 import * as Y from "yjs";
