@@ -1,4 +1,4 @@
-import { staticIntegration } from "@solidjs/router";
+import { clsx } from "clsx";
 import type { Map as LeafletMap } from "leaflet";
 import { LeafletMouseEvent } from "leaflet";
 import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
@@ -23,6 +23,9 @@ export const zLeafletAwarenessSchema = z.object({
   mousePressed: z.boolean(),
 });
 
+export type MultiplayerLeafletAwareness =
+  typeof zLeafletAwarenessSchema["_output"];
+
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
 export function bindMyMapCursorToAwareness(
   provider: WebrtcProvider,
@@ -30,11 +33,8 @@ export function bindMyMapCursorToAwareness(
   username: () => string,
   userColor: () => string
 ) {
-  const localAwarenessStore = createMutable<
-    Pick<
-      typeof zLeafletAwarenessSchema["_output"],
-      "mouseLatLng" | "mousePressed"
-    >
+  const localCursorStateStore = createMutable<
+    Pick<MultiplayerLeafletAwareness, "mouseLatLng" | "mousePressed">
   >({
     mousePressed: false,
     mouseLatLng: [0, 0],
@@ -43,14 +43,14 @@ export function bindMyMapCursorToAwareness(
   function updateMyPointer(e: LeafletMouseEvent) {
     batch(() => {
       if (e.type === "mousedown") {
-        localAwarenessStore.mousePressed = true;
+        localCursorStateStore.mousePressed = true;
       }
       if (e.type === "mouseup") {
-        localAwarenessStore.mousePressed = false;
+        localCursorStateStore.mousePressed = false;
       }
 
       if (!e.latlng) return;
-      localAwarenessStore.mouseLatLng = [e.latlng.lat, e.latlng.lng];
+      localCursorStateStore.mouseLatLng = [e.latlng.lat, e.latlng.lng];
     });
   }
 
@@ -60,14 +60,54 @@ export function bindMyMapCursorToAwareness(
 
   createEffect(() => {
     provider.awareness.setLocalState({
-      ...localAwarenessStore,
+      ...localCursorStateStore,
       userColor: userColor(),
       username: username(),
     });
   });
 }
 
-export async function displayPeerCursors(
+function addCursorMarkerToMap(
+  awarenessMap: {
+    [key: number]: MultiplayerLeafletAwareness | undefined;
+  },
+  clientId: number,
+  map: LeafletMap,
+  L: typeof import("leaflet"),
+  hideHand: boolean
+) {
+  const iconRoot = (<div />) as HTMLElement;
+
+  const initialState = awarenessMap[clientId];
+  if (!initialState) return () => {};
+
+  const marker = L.marker(initialState.mouseLatLng, {
+    icon: L.divIcon({ html: iconRoot }),
+  }).addTo(map);
+
+  const markerElement = marker.getElement();
+  if (markerElement) {
+    markerElement.style.border = "none";
+    markerElement.style.backgroundColor = "transparent";
+    markerElement.style.cursor = "inherit";
+  }
+
+  createEffect(() =>
+    marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
+  );
+
+  const disposeSolid = render(
+    () => <CursorIcon state={awarenessMap[clientId]} hideHand={hideHand} />,
+    iconRoot
+  );
+
+  return () => {
+    disposeSolid();
+    marker.remove();
+  };
+}
+
+export async function displayUserCursors(
   provider: WebrtcProvider,
   map: LeafletMap
 ) {
@@ -79,36 +119,26 @@ export async function displayPeerCursors(
   );
 
   const cleanupFunctions = new Map<number, () => void>();
+
+  const cleanupMyCursor = addCursorMarkerToMap(
+    awarenessMap,
+    provider.awareness.clientID,
+    map,
+    L,
+    true
+  );
+  cleanupFunctions.set(provider.awareness.clientID, cleanupMyCursor);
+
   provider.awareness.on("update", (changes: AwarenessChanges) => {
     for (const clientId of changes.added) {
-      const iconRoot = (<div />) as HTMLElement;
-
-      const initialState = awarenessMap[clientId];
-      if (!initialState) return;
-
-      const marker = L.marker(initialState.mouseLatLng, {
-        icon: L.divIcon({ html: iconRoot }),
-      }).addTo(map);
-
-      const markerElement = marker.getElement();
-      if (markerElement) {
-        markerElement.style.border = "none";
-        markerElement.style.backgroundColor = "transparent";
-      }
-
-      createEffect(() =>
-        marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
+      const cleanup = addCursorMarkerToMap(
+        awarenessMap,
+        clientId,
+        map,
+        L,
+        false
       );
-
-      const disposeSolid = render(
-        () => <CursorIcon state={() => awarenessMap[clientId]} />,
-        iconRoot
-      );
-
-      cleanupFunctions.set(clientId, () => {
-        disposeSolid();
-        marker.remove();
-      });
+      cleanupFunctions.set(clientId, cleanup);
     }
 
     for (const clientId of changes.removed) {
@@ -119,33 +149,36 @@ export async function displayPeerCursors(
 }
 
 function CursorIcon(props: {
-  state: () => typeof zLeafletAwarenessSchema["_output"] | undefined;
+  state: MultiplayerLeafletAwareness | undefined;
+  hideHand: boolean;
 }) {
   return (
     <div class="relative">
       <div class="absolute">
         <div class="space-y-1">
-          {props.state()?.mousePressed ? (
+          {props.state?.mousePressed ? (
             <FaSolidHandBackFist
               size="20px"
               // @ts-expect-error
-              fill={USER_COLORS[props.state()?.userColor]}
+              fill={USER_COLORS[props.state?.userColor]}
+              class={clsx(props.hideHand && "invisible")}
             />
           ) : (
             <FaSolidHand
               size="20px"
               // @ts-expect-error
-              fill={USER_COLORS[props.state()?.userColor]}
+              fill={USER_COLORS[props.state?.userColor]}
+              class={clsx(props.hideHand && "invisible")}
             />
           )}
           <div
             class="text-gray-200 py-1 px-2 rounded-md font-bold whitespace-nowrap"
             style={{
               // @ts-expect-error
-              "background-color": USER_COLORS[props.state()?.userColor],
+              "background-color": USER_COLORS[props.state?.userColor],
             }}
           >
-            <span>{props.state()?.username}</span>
+            <span>{props.state?.username}</span>
           </div>
         </div>
       </div>

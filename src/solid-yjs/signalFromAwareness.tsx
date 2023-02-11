@@ -15,21 +15,25 @@ export function signalFromAwareness<T>(
   awareness: Awareness,
   stateSchema: ZodSchema<T>
 ) {
-  const store = createMutable<{ [clientId: number]: T | undefined }>({});
+  function parseState(rawState: unknown) {
+    const parsed = stateSchema.safeParse(rawState);
+    return parsed.success ? parsed.data : undefined;
+  }
+
+  const store = createMutable<{ [clientId: number]: T | undefined }>({
+    [awareness.clientID]: parseState(awareness.getLocalState()),
+  });
 
   function observer(changes: AwarenessChanges, room: Room | "local") {
     batch(() => {
       // Skip re-storing your own awareness data:
       if (room === "local") {
+        store[awareness.clientID] = parseState(awareness.getLocalState());
         return;
       }
 
       for (const clientId of [...changes.added, ...changes.updated]) {
-        const newState = stateSchema.safeParse(
-          room.awareness.getStates().get(clientId)
-        );
-        if (!newState.success) continue;
-        store[clientId] = newState.data;
+        store[clientId] = parseState(room.awareness.getStates().get(clientId));
       }
       for (const clientId of changes.removed) {
         delete store[clientId];
