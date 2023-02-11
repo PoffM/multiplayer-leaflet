@@ -3,12 +3,14 @@ import { onCleanup, onMount } from "solid-js";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { signalFromY } from "../../solid-yjs/signalFromY";
+import { USER_COLORS } from "../ColorPicker";
 import { bindMyMapCursorToAwareness, displayPeerCursors } from "./live-cursors";
 import { syncMapView } from "./syncMapView";
 
 export interface MultiplayerLeafletProps {
   roomName: string;
   username: string;
+  userColor: keyof typeof USER_COLORS;
 }
 
 export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
@@ -40,7 +42,12 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     });
 
     await displayPeerCursors(provider, map);
-    bindMyMapCursorToAwareness(provider, map, () => props.username);
+    bindMyMapCursorToAwareness(
+      provider,
+      map,
+      () => props.username,
+      () => props.userColor
+    );
 
     syncMapView(map, yState, stateSignal);
   });

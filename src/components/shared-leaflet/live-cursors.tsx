@@ -1,3 +1,4 @@
+import { staticIntegration } from "@solidjs/router";
 import type { Map as LeafletMap } from "leaflet";
 import { LeafletMouseEvent } from "leaflet";
 import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
@@ -10,9 +11,14 @@ import {
   AwarenessChanges,
   signalFromAwareness,
 } from "../../solid-yjs/signalFromAwareness";
+import { USER_COLORS } from "../ColorPicker";
 
 export const zLeafletAwarenessSchema = z.object({
   username: z.string().max(50),
+  userColor: z
+    .string()
+    .max(20)
+    .refine((str) => str in USER_COLORS),
   mouseLatLng: z.tuple([z.number(), z.number()]),
   mousePressed: z.boolean(),
 });
@@ -21,7 +27,8 @@ export const zLeafletAwarenessSchema = z.object({
 export function bindMyMapCursorToAwareness(
   provider: WebrtcProvider,
   map: LeafletMap,
-  username: () => string
+  username: () => string,
+  userColor: () => string
 ) {
   const localAwarenessStore = createMutable<
     Pick<
@@ -54,6 +61,7 @@ export function bindMyMapCursorToAwareness(
   createEffect(() => {
     provider.awareness.setLocalState({
       ...localAwarenessStore,
+      userColor: userColor(),
       username: username(),
     });
   });
@@ -112,11 +120,25 @@ function CursorIcon(props: {
       <div class="absolute">
         <div class="space-y-1">
           {props.state()?.mousePressed ? (
-            <FaSolidHandBackFist size="20px" fill="green" />
+            <FaSolidHandBackFist
+              size="20px"
+              // @ts-expect-error
+              fill={USER_COLORS[props.state()?.userColor]}
+            />
           ) : (
-            <FaSolidHand size="20px" fill="green" />
+            <FaSolidHand
+              size="20px"
+              // @ts-expect-error
+              fill={USER_COLORS[props.state()?.userColor]}
+            />
           )}
-          <div class="text-black py-1 px-2 rounded-md bg-green-500 font-bold whitespace-nowrap">
+          <div
+            class="text-gray-200 py-1 px-2 rounded-md font-bold whitespace-nowrap"
+            style={{
+              // @ts-expect-error
+              "background-color": USER_COLORS[props.state()?.userColor],
+            }}
+          >
             <span>{props.state()?.username}</span>
           </div>
         </div>

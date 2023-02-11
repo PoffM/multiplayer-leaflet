@@ -8,6 +8,7 @@ import {
   colors,
   uniqueNamesGenerator,
 } from "unique-names-generator";
+import { ColorPicker, USER_COLORS } from "~/components/ColorPicker";
 import { CopyButton } from "~/components/CopyButton";
 import { MultiplayerLeaflet } from "~/components/shared-leaflet/MultiplayerLeaflet";
 
@@ -18,6 +19,7 @@ export default function Home() {
   const [store, setStore] = createStore({
     roomId: location.query.roomId as string | undefined,
     username: "",
+    userColor: undefined as keyof typeof USER_COLORS | undefined,
     shareLink: undefined as string | undefined,
   });
 
@@ -33,6 +35,9 @@ export default function Home() {
   createEffect(
     () => store.username && localStorage.setItem("username", store.username)
   );
+  createEffect(
+    () => store.userColor && localStorage.setItem("userColor", store.userColor)
+  );
 
   onMount(() => {
     // Get the stored username, otherwise generate a random one:
@@ -44,6 +49,10 @@ export default function Home() {
           length: 3,
           separator: "-",
         }),
+      // @ts-expect-error assume the user stored a valid color, not a big deal if it's wrong.
+      userColor:
+        localStorage.getItem("userColor") ||
+        Object.keys(USER_COLORS)[Math.floor(Math.random() * 12)],
     });
 
     // Create a new random room ID if there isn't one:
@@ -70,15 +79,16 @@ export default function Home() {
             </div>
           </div>
         )}
-        {store.roomId && (
+        {store.roomId && store.userColor && (
           <div class="w-[700px] h-[700px]">
             <MultiplayerLeaflet
               roomName={store.roomId}
               username={store.username}
+              userColor={store.userColor}
             />
           </div>
         )}
-        <div class="flex justify-center">
+        <div class="flex justify-center gap-2">
           <label class="form-control flex-row gap-1 w-[400px]">
             <div class="label">
               <span class="label-text font-bold whitespace-nowrap">
@@ -94,6 +104,10 @@ export default function Home() {
               onInput={(e) => setStore({ username: e.target.value })}
             />
           </label>
+          <ColorPicker
+            color={store.userColor}
+            onChange={(newColor) => setStore({ userColor: newColor })}
+          />
         </div>
       </main>
     </div>
