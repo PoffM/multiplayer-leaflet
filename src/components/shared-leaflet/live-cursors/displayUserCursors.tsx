@@ -21,6 +21,7 @@ export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
 
   const cleanupFunctions = new Map<number, () => void>();
 
+  // Add the user's own cursor to the map, hiding the hand icon:
   const cleanupMyCursor = addCursorMarkerToMap(
     awarenessMap,
     provider.awareness.clientID,
@@ -31,12 +32,7 @@ export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
 
   provider.awareness.on("update", (changes: AwarenessChanges) => {
     for (const clientId of changes.added) {
-      const cleanup = addCursorMarkerToMap(
-        awarenessMap,
-        clientId,
-        map,
-        false
-      );
+      const cleanup = addCursorMarkerToMap(awarenessMap, clientId, map, false);
       cleanupFunctions.set(clientId, cleanup);
     }
 
@@ -58,9 +54,8 @@ function addCursorMarkerToMap(
   const iconRoot = (<div />) as HTMLElement;
 
   const initialState = awarenessMap[clientId];
-  if (!initialState) return () => {};
 
-  const marker = L.marker(initialState.mouseLatLng, {
+  const marker = L.marker(initialState?.mouseLatLng ?? [0, 0], {
     icon: L.divIcon({ html: iconRoot }),
   }).addTo(map);
 
@@ -72,9 +67,12 @@ function addCursorMarkerToMap(
     markerElement.style.cursor = "inherit";
   }
 
-  createEffect(() =>
-    marker.setLatLng(awarenessMap[clientId]?.mouseLatLng ?? [0, 0])
-  );
+  createEffect(() => {
+    const state = awarenessMap[clientId];
+    if (!state) return;
+
+    marker.setLatLng(state.mouseLatLng);
+  });
 
   const disposeSolid = render(
     () => <CursorIcon state={awarenessMap[clientId]} hideHand={hideHand} />,

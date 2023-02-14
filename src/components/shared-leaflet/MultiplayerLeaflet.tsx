@@ -55,16 +55,14 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   });
 
   // Add my custom features to the map:
-  setTimeout(() => {
-    shareMyCursor(
-      provider,
-      map,
-      () => props.username,
-      () => props.userColor
-    );
-    displayUserCursors(provider, map);
-    syncMapView(map, yState, stateSignal);
-  }, 0);
+  shareMyCursor(
+    provider,
+    map,
+    () => props.username,
+    () => props.userColor
+  );
+  displayUserCursors(provider, map);
+  syncMapView(map, yState, stateSignal);
 
   return div;
 }
