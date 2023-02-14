@@ -36,11 +36,22 @@ export function shareMyCursor(
   map.on("mousedown", updateMyPointer);
   map.on("mouseup", updateMyPointer);
 
-  createEffect(() => {
-    provider.awareness.setLocalState({
-      ...localCursorStateStore,
-      userColor: userColor(),
-      username: username(),
-    });
-  });
+  createEffect(() =>
+    provider.awareness.setLocalStateField(
+      "mousePressed",
+      localCursorStateStore.mousePressed
+    )
+  );
+  createEffect(() =>
+    provider.awareness.setLocalStateField(
+      "mouseLatLng",
+      localCursorStateStore.mouseLatLng
+    )
+  );
+  createEffect(() =>
+    provider.awareness.setLocalStateField("userColor", userColor())
+  );
+  createEffect(() =>
+    provider.awareness.setLocalStateField("username", username())
+  );
 }
