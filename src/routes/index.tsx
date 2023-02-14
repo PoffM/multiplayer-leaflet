@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, lazy, onCleanup, onMount } from "solid-js";
 import { createStore } from "solid-js/store";
 import { useLocation, useNavigate } from "solid-start";
 import {
@@ -10,7 +10,15 @@ import {
 } from "unique-names-generator";
 import { ColorPicker, USER_COLORS } from "~/components/ColorPicker";
 import { CopyButton } from "~/components/CopyButton";
-import { MultiplayerLeaflet } from "~/components/shared-leaflet/MultiplayerLeaflet";
+
+/** Lazy-loaded map component because Leaflet can't be imported during SSR. */
+const MultiplayerLeaflet = lazy(async () => {
+  const { MultiplayerLeaflet } = await import(
+    "~/components/shared-leaflet/MultiplayerLeaflet"
+  );
+
+  return { default: MultiplayerLeaflet };
+});
 
 export default function Home() {
   const location = useLocation();
@@ -80,13 +88,11 @@ export default function Home() {
           </div>
         )}
         {store.roomId && store.userColor && (
-          <div class="w-[700px] h-[700px]">
-            <MultiplayerLeaflet
-              roomName={store.roomId}
-              username={store.username}
-              userColor={store.userColor}
-            />
-          </div>
+          <MultiplayerLeaflet
+            roomName={store.roomId}
+            username={store.username}
+            userColor={store.userColor}
+          />
         )}
         <div class="flex justify-center gap-4">
           <label class="form-control flex-row gap-1 w-[400px]">

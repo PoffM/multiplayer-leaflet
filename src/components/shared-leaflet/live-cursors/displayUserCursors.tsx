@@ -1,4 +1,5 @@
 import type { Map as LeafletMap } from "leaflet";
+import * as L from "leaflet";
 import { createEffect } from "solid-js";
 import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
@@ -12,12 +13,7 @@ import {
   zLeafletAwarenessSchema,
 } from "./MultiplayerLeafletAwareness";
 
-export async function displayUserCursors(
-  provider: WebrtcProvider,
-  map: LeafletMap
-) {
-  const L = await import("leaflet");
-
+export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
   const awarenessMap = signalFromAwareness(
     provider.awareness,
     zLeafletAwarenessSchema
@@ -29,7 +25,6 @@ export async function displayUserCursors(
     awarenessMap,
     provider.awareness.clientID,
     map,
-    L,
     true
   );
   cleanupFunctions.set(provider.awareness.clientID, cleanupMyCursor);
@@ -40,7 +35,6 @@ export async function displayUserCursors(
         awarenessMap,
         clientId,
         map,
-        L,
         false
       );
       cleanupFunctions.set(clientId, cleanup);
@@ -59,7 +53,6 @@ function addCursorMarkerToMap(
   },
   clientId: number,
   map: LeafletMap,
-  L: typeof import("leaflet"),
   hideHand: boolean
 ) {
   const iconRoot = (<div />) as HTMLElement;
@@ -71,6 +64,7 @@ function addCursorMarkerToMap(
     icon: L.divIcon({ html: iconRoot }),
   }).addTo(map);
 
+  // Get rid of the default white box on the marker:
   const markerElement = marker.getElement();
   if (markerElement) {
     markerElement.style.border = "none";
