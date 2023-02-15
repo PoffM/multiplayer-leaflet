@@ -5,6 +5,7 @@ import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { signalFromY } from "../../solid-yjs/signalFromY";
 import { USER_COLORS } from "../ColorPicker";
+import { DrawLayer } from "./DrawLayer";
 import { displayUserCursors } from "./live-cursors/displayUserCursors";
 import { shareMyCursor } from "./live-cursors/shareMyCursor";
 import { syncMapView } from "./syncMapView";
@@ -16,8 +17,8 @@ export interface MultiplayerLeafletProps {
 }
 
 export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
-  const div = (
-    <div class="rounded-md w-[700px] h-[700px]" />
+  const leafletDiv = (
+    <div class="absolute rounded-md w-[700px] h-[700px]" />
   ) as HTMLDivElement;
 
   const ydoc = new Y.Doc();
@@ -26,7 +27,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   const stateSignal = signalFromY(yState);
 
   // Setup the Leaflet map:
-  const map = L.map(div).setView([51.505, -0.09], 13);
+  const map = L.map(leafletDiv).setView([51.505, -0.09], 13);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -64,5 +65,10 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   displayUserCursors(provider, map);
   syncMapView(map, yState, stateSignal);
 
-  return div;
+  return (
+    <div class="relative">
+      {leafletDiv}
+      <DrawLayer map={map} />
+    </div>
+  );
 }
