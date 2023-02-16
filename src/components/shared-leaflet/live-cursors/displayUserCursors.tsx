@@ -56,16 +56,11 @@ function addCursorMarkerToMap(
   const initialState = awarenessMap[clientId];
 
   const marker = L.marker(initialState?.mouseLatLng ?? [0, 0], {
-    icon: L.divIcon({ html: iconRoot }),
+    icon: L.divIcon({
+      html: iconRoot,
+      className: "",
+    }),
   }).addTo(map);
-
-  // Get rid of the default white box on the marker:
-  const markerElement = marker.getElement();
-  if (markerElement) {
-    markerElement.style.border = "none";
-    markerElement.style.backgroundColor = "transparent";
-    markerElement.style.cursor = "inherit";
-  }
 
   createEffect(() => {
     const state = awarenessMap[clientId];

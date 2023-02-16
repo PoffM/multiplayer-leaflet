@@ -1,7 +1,8 @@
 import * as L from "leaflet";
 import rough from "roughjs";
-import { createEffect, createMemo, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
+import { render } from "solid-js/web";
 
 export interface DrawLayerProps {
   map: L.Map;
@@ -11,6 +12,8 @@ export function DrawLayer(props: DrawLayerProps) {
   const store = createMutable({
     tool: "MOVE" as "DRAW" | "MOVE",
     canvas: undefined as HTMLCanvasElement | undefined,
+
+    pathSeed: Math.random() * 1000,
     drawing: false,
     drawPath: [] as [number, number][],
   });
@@ -19,7 +22,15 @@ export function DrawLayer(props: DrawLayerProps) {
     store.canvas ? rough.canvas(store.canvas, { options: {} }) : undefined
   );
 
+  const zoom = from<number>((set) => {
+    const updateZoom = () => set(props.map.getZoom());
+    updateZoom();
+    props.map.on("zoom", updateZoom);
+    return () => props.map.removeEventListener("zoom", updateZoom);
+  });
+
   function startDraw(e: MouseEvent) {
+    store.pathSeed = Math.random() * 1000;
     store.drawing = true;
     addPointToPath(e);
   }
@@ -31,19 +42,52 @@ export function DrawLayer(props: DrawLayerProps) {
     const rc = roughCanvas();
     if (!c || !rc) return;
 
-    // rc.path(getSvgPathFromStroke(store.drawPath));
-    // roughCanvas()?.rectangle(e.layerX / 2, e.layerY / 4, 100, 50);
-
-    roughCanvas()?.linearPath(store.drawPath);
+    c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+    roughCanvas()?.linearPath(store.drawPath, { seed: store.pathSeed });
   }
 
   function finishDrawing() {
     store.drawing = false;
-    store.canvas?.removeEventListener("mousemove", addPointToPath);
-    console.log(store.drawPath);
-    store.drawPath = [];
 
-    roughCanvas()?.rectangle(50, 25, 50, 25);
+    const iconRoot = (<div />) as HTMLElement;
+
+    const marker = L.marker(
+      props.map.containerPointToLatLng(store.drawPath[0]),
+      { icon: L.divIcon({ html: iconRoot, className: "", iconSize: [0, 0] }) }
+    ).addTo(props.map);
+
+    const canvasRadius = 700;
+    const disposeSolid = render(() => {
+      const origZoom = zoom()!;
+
+      const zoomDiff = () => zoom()! - origZoom;
+
+      const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
+
+      return (
+        <canvas
+          width={canvasRadius * 2}
+          height={canvasRadius * 2}
+          style={{
+            transform: `translate(${zoomOffset()}%, ${zoomOffset()}%)`,
+            scale: Math.pow(2, zoomDiff()),
+          }}
+          ref={(canvas) => {
+            rough.canvas(canvas).linearPath(
+              store.drawPath.map((coord) => {
+                const start = store.drawPath[0];
+                return [
+                  coord[0] - start[0] + canvasRadius,
+                  coord[1] - start[1] + canvasRadius,
+                ];
+              })
+            );
+          }}
+        />
+      );
+    }, iconRoot);
+
+    store.drawPath = [];
   }
 
   createEffect(() =>
