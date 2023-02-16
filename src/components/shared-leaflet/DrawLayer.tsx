@@ -3,9 +3,13 @@ import rough from "roughjs";
 import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
+import * as Y from "yjs";
+import { signalFromY } from "~/solid-yjs/signalFromY";
 
 export interface DrawLayerProps {
   map: L.Map;
+  yStrokes: Y.Array<Y.Map<any>>;
+  clientId: number;
 }
 
 export function DrawLayer(props: DrawLayerProps) {
@@ -13,14 +17,8 @@ export function DrawLayer(props: DrawLayerProps) {
     tool: "MOVE" as "DRAW" | "MOVE",
     canvas: undefined as HTMLCanvasElement | undefined,
 
-    pathSeed: Math.random() * 1000,
     drawing: false,
-    drawPath: [] as [number, number][],
   });
-
-  const roughCanvas = createMemo(() =>
-    store.canvas ? rough.canvas(store.canvas, { options: {} }) : undefined
-  );
 
   const zoom = from<number>((set) => {
     const updateZoom = () => set(props.map.getZoom());
@@ -29,48 +27,98 @@ export function DrawLayer(props: DrawLayerProps) {
     return () => props.map.removeEventListener("zoom", updateZoom);
   });
 
+  let currentStroke: Y.Map<any> | null = null;
+
   function startDraw(e: MouseEvent) {
-    store.pathSeed = Math.random() * 1000;
     store.drawing = true;
-    addPointToPath(e);
+
+    currentStroke = new Y.Map();
+    currentStroke.set("clientId", props.clientId);
+    currentStroke.set("seed", Math.random() * 1000);
+
+    const points = new Y.Array<[number, number]>();
+    // @ts-expect-error layerX/Y should exist:
+    points.push([[e.layerX, e.layerY]]);
+    currentStroke.set("points", new Y.Array<[number, number]>());
+
+    props.yStrokes.push([currentStroke]);
   }
 
   function addPointToPath(e: MouseEvent) {
-    store.drawPath.push([e.layerX, e.layerY]);
+    const points = currentStroke?.get("points");
 
-    const c = store.canvas;
-    const rc = roughCanvas();
-    if (!c || !rc) return;
-
-    c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
-    roughCanvas()?.linearPath(store.drawPath, { seed: store.pathSeed });
+    // @ts-expect-error layerX/Y should exist:
+    points.push([[e.layerX, e.layerY]]);
   }
 
   function finishDrawing() {
     store.drawing = false;
+    currentStroke = null;
+  }
 
+  props.yStrokes.observe((event) => {
+    if (event.changes.added) {
+      for (const item of event.changes.added) {
+        for (const stroke of item.content.getContent() as Y.Map<any>[]) {
+          addStrokeToMap(stroke);
+        }
+      }
+    }
+  });
+
+  function addStrokeToMap(stroke: Y.Map<any>) {
     const iconRoot = (<div />) as HTMLElement;
 
-    const marker = L.marker(
-      props.map.containerPointToLatLng(store.drawPath[0]),
-      {
-        icon: L.divIcon({
-          html: iconRoot,
-          className: "[cursor:inherit!important]",
-          iconSize: [0, 0],
-        }),
-      }
-    ).addTo(props.map);
+    const pointsSignal = signalFromY<Y.Array<[number, number]>>(
+      stroke?.get("points")
+    );
+
+    const hasPoints = createMemo(() => !!pointsSignal()?.length);
+    createEffect(() => {
+      if (!hasPoints()) return;
+    });
+
+    const marker = createMemo(() =>
+      hasPoints()
+        ? L.marker(
+            props.map.containerPointToLatLng(stroke?.get("points").get(0)),
+            {
+              icon: L.divIcon({
+                html: iconRoot,
+                className: "[cursor:inherit!important]",
+                iconSize: [0, 0],
+              }),
+            }
+          ).addTo(props.map)
+        : undefined
+    );
+    marker();
+
+    const origZoom = zoom()!;
+
+    const zoomDiff = () => zoom()! - origZoom;
+    const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
+
+    function setupCanvas(canvas: HTMLCanvasElement) {
+      createEffect(() => {
+        const points = pointsSignal();
+        if (!points) return;
+
+        rough.canvas(canvas).linearPath(
+          points.map((coord) => {
+            const start = points.get(0);
+            return [
+              coord[0] - start[0] + canvasRadius,
+              coord[1] - start[1] + canvasRadius,
+            ];
+          })
+        );
+      });
+    }
 
     const canvasRadius = 700;
-    const disposeSolid = render(() => {
-      const origZoom = zoom()!;
-
-      const zoomDiff = () => zoom()! - origZoom;
-
-      const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
-
-      return (
+    const disposeSolid = render(
+      () => (
         <canvas
           width={canvasRadius * 2}
           height={canvasRadius * 2}
@@ -78,22 +126,16 @@ export function DrawLayer(props: DrawLayerProps) {
             transform: `translate(${zoomOffset()}%, ${zoomOffset()}%)`,
             scale: Math.pow(2, zoomDiff()),
           }}
-          ref={(canvas) => {
-            rough.canvas(canvas).linearPath(
-              store.drawPath.map((coord) => {
-                const start = store.drawPath[0];
-                return [
-                  coord[0] - start[0] + canvasRadius,
-                  coord[1] - start[1] + canvasRadius,
-                ];
-              })
-            );
-          }}
+          ref={setupCanvas}
         />
-      );
-    }, iconRoot);
+      ),
+      iconRoot
+    );
 
-    store.drawPath = [];
+    function cleanup() {
+      marker()?.remove();
+      disposeSolid();
+    }
   }
 
   createEffect(() =>

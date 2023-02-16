@@ -3,7 +3,6 @@ import "leaflet/dist/leaflet.css";
 import { onCleanup, onMount } from "solid-js";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { signalFromY } from "../../solid-yjs/signalFromY";
 import { USER_COLORS } from "../ColorPicker";
 import { DrawLayer } from "./DrawLayer";
 import { displayUserCursors } from "./live-cursors/displayUserCursors";
@@ -24,7 +23,6 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   const ydoc = new Y.Doc();
 
   const yState = ydoc.getMap("leafletState");
-  const stateSignal = signalFromY(yState);
 
   // Setup the Leaflet map:
   const map = L.map(leafletDiv).setView([51.505, -0.09], 13);
@@ -63,12 +61,16 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     () => props.userColor
   );
   displayUserCursors(provider, map);
-  syncMapView(map, yState, stateSignal);
+  syncMapView(map, yState);
 
   return (
     <div class="relative">
       {leafletDiv}
-      <DrawLayer map={map} />
+      <DrawLayer
+        map={map}
+        yStrokes={ydoc.getArray("strokes")}
+        clientId={provider.awareness.clientID}
+      />
     </div>
   );
 }
