@@ -53,7 +53,13 @@ export function DrawLayer(props: DrawLayerProps) {
 
     const marker = L.marker(
       props.map.containerPointToLatLng(store.drawPath[0]),
-      { icon: L.divIcon({ html: iconRoot, className: "", iconSize: [0, 0] }) }
+      {
+        icon: L.divIcon({
+          html: iconRoot,
+          className: "[cursor:inherit!important]",
+          iconSize: [0, 0],
+        }),
+      }
     ).addTo(props.map);
 
     const canvasRadius = 700;

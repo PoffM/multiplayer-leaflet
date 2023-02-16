@@ -5,12 +5,12 @@ import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import {
   AwarenessChanges,
-  signalFromAwareness,
+  signalFromAwareness
 } from "../../../solid-yjs/signalFromAwareness";
 import { CursorIcon } from "./CursorIcon";
 import {
   MultiplayerLeafletAwareness,
-  zLeafletAwarenessSchema,
+  zLeafletAwarenessSchema
 } from "./MultiplayerLeafletAwareness";
 
 export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
@@ -58,7 +58,7 @@ function addCursorMarkerToMap(
   const marker = L.marker(initialState?.mouseLatLng ?? [0, 0], {
     icon: L.divIcon({
       html: iconRoot,
-      className: "",
+      className: "[cursor:inherit!important]",
     }),
   }).addTo(map);
 
