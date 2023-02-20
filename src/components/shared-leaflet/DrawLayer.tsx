@@ -1,5 +1,7 @@
+import clsx from "clsx";
 import * as L from "leaflet";
 import rough from "roughjs";
+import { FaSolidHand, FaSolidPen } from "solid-icons/fa";
 import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
@@ -60,7 +62,7 @@ export function DrawLayer(props: DrawLayerProps) {
     currentStroke = null;
   }
 
-  props.yStrokes.observe((event) => {
+  function strokesObserver(event: Y.YArrayEvent<Y.Map<any>>) {
     if (event.changes.added) {
       for (const item of event.changes.added) {
         for (const stroke of item.content.getContent() as Y.Map<any>[]) {
@@ -68,7 +70,9 @@ export function DrawLayer(props: DrawLayerProps) {
         }
       }
     }
-  });
+  }
+  props.yStrokes.observe(strokesObserver);
+  onCleanup(() => props.yStrokes.unobserve(strokesObserver));
 
   function addStrokeToMap(stroke: Y.Map<any>) {
     const iconRoot = (<div />) as HTMLElement;
@@ -134,6 +138,7 @@ export function DrawLayer(props: DrawLayerProps) {
     const disposeSolid = render(
       () => (
         <canvas
+          class="cursor-none"
           width={canvasRadius * 2}
           height={canvasRadius * 2}
           style={{
@@ -165,31 +170,79 @@ export function DrawLayer(props: DrawLayerProps) {
     window.removeEventListener("blur", finishDrawing);
   });
 
-  class DrawControl extends L.Control {
-    onAdd(map: L.Map): HTMLElement {
-      return (
-        <div class="flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
+  function isSelected(tool: MultiplayerLeafletAwareness["tool"]) {
+    return props.awarenessMap[props.awareness.clientID]?.tool === tool;
+  }
+
+  const controlDiv = (<div />) as HTMLElement;
+  const disposeSolidControl = render(
+    () => (
+      <div class="space-y-1">
+        <div class="w-fit flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
           <button
             class="h-[34px] px-2 hover:bg-neutral-100"
             onClick={() => props.awareness.setLocalStateField("tool", "MOVE")}
+            title="Move Mode"
+            style={{
+              color: isSelected("MOVE")
+                ? USER_COLORS[
+                    props.awarenessMap[props.awareness.clientID]?.userColor ??
+                      "Green"
+                  ]
+                : "black",
+            }}
           >
-            move
+            <FaSolidHand size="20px" />
           </button>
           <button
             class="h-[34px] px-2 hover:bg-neutral-100"
             onClick={() => props.awareness.setLocalStateField("tool", "DRAW")}
+            title="Draw Mode"
+            style={{
+              color: isSelected("DRAW")
+                ? USER_COLORS[
+                    props.awarenessMap[props.awareness.clientID]?.userColor ??
+                      "Green"
+                  ]
+                : "black",
+            }}
           >
-            draw
+            <FaSolidPen size="20px" />
           </button>
         </div>
-      ) as HTMLElement;
+        <div class="bg-white border-2 rounded border-neutral-400 text-black text-center px-1">
+          Press space to switch
+        </div>
+      </div>
+    ),
+    controlDiv
+  );
+
+  class DrawControl extends L.Control {
+    onAdd(): HTMLElement {
+      return controlDiv;
     }
   }
 
-  const control = new DrawControl({ position: "topleft" });
+  const control = new DrawControl({ position: "topleft" }).addTo(props.map);
 
-  control.addTo(props.map);
-  onCleanup(() => control.remove());
+  function toggleToolOnPressSpace(e: KeyboardEvent): void {
+    if (e.key === " ") {
+      e.preventDefault();
+      const tool = props.awarenessMap[props.awareness.clientID]?.tool;
+      props.awareness.setLocalStateField(
+        "tool",
+        tool === "DRAW" ? "MOVE" : "DRAW"
+      );
+    }
+  }
+  window.addEventListener("keydown", toggleToolOnPressSpace);
+
+  onCleanup(() => {
+    control.remove();
+    disposeSolidControl();
+    window.removeEventListener("keydown", toggleToolOnPressSpace);
+  });
 
   function forwardMouseMoveToMap(e: MouseEvent) {
     // @ts-expect-error layerX/Y should exist:
