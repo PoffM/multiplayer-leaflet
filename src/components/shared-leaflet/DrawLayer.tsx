@@ -8,6 +8,7 @@ import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
 import { MultiplayerLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
 import { USER_COLORS } from "../ColorPicker";
+import { map } from "lodash";
 
 export interface DrawLayerProps {
   map: L.Map;
@@ -19,7 +20,7 @@ export interface DrawLayerProps {
 export function DrawLayer(props: DrawLayerProps) {
   const store = createMutable({
     tool: "MOVE" as "DRAW" | "MOVE",
-    canvas: undefined as HTMLCanvasElement | undefined,
+    drawDiv: undefined as HTMLDivElement | undefined,
 
     drawing: false,
   });
@@ -124,9 +125,10 @@ export function DrawLayer(props: DrawLayerProps) {
         // const svgPath = getSvgPathFromStroke(pointsOnMap);
 
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
-
-        console.log("redrawing path");
-        rc.linearPath(pointsOnMap, { stroke: color(), seed: stroke.get("seed") });
+        rc.linearPath(pointsOnMap, {
+          stroke: color(),
+          seed: stroke.get("seed"),
+        });
       });
     }
 
@@ -154,8 +156,8 @@ export function DrawLayer(props: DrawLayerProps) {
 
   createEffect(() =>
     store.drawing
-      ? store.canvas?.addEventListener("mousemove", addPointToPath)
-      : store.canvas?.removeEventListener("mousemove", addPointToPath)
+      ? store.drawDiv?.addEventListener("mousemove", addPointToPath)
+      : store.drawDiv?.removeEventListener("mousemove", addPointToPath)
   );
 
   window.addEventListener("mouseup", finishDrawing);
@@ -191,18 +193,35 @@ export function DrawLayer(props: DrawLayerProps) {
   control.addTo(props.map);
   onCleanup(() => control.remove());
 
+  function forwardMouseMoveToMap(e: MouseEvent) {
+    // @ts-expect-error layerX/Y should exist:
+    const containerPoint: [number, number] = [e.layerX, e.layerY];
+
+    const leafletEvent: L.LeafletMouseEvent = {
+      type: "mousemove",
+      latlng: props.map.containerPointToLatLng(containerPoint),
+      target: e.target,
+      originalEvent: e,
+      containerPoint: new L.Point(...containerPoint),
+      layerPoint: props.map.containerPointToLayerPoint(containerPoint),
+
+      popup: null,
+      propagatedFrom: null,
+      sourceTarget: null,
+      layer: null,
+    };
+
+    props.map.fireEvent("mousemove", leafletEvent);
+  }
   return (
     <>
       {store.tool === "DRAW" && (
-        <div class="absolute inset-0 cursor-pointer z-[700]">
-          <canvas
-            ref={(it) => (store.canvas = it)}
-            onMouseDown={startDraw}
-            class="w-full h-full"
-            width={700}
-            height={700}
-          />
-        </div>
+        <div
+          class="absolute inset-0 cursor-pointer z-[700]"
+          ref={(it) => (store.drawDiv = it)}
+          onMouseDown={startDraw}
+          onMouseMove={forwardMouseMoveToMap}
+        />
       )}
     </>
   );
