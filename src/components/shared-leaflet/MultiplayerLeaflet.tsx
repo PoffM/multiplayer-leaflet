@@ -3,9 +3,11 @@ import "leaflet/dist/leaflet.css";
 import { onCleanup, onMount } from "solid-js";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
+import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
 import { USER_COLORS } from "../ColorPicker";
 import { DrawLayer } from "./DrawLayer";
 import { displayUserCursors } from "./live-cursors/displayUserCursors";
+import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
 import { shareMyCursor } from "./live-cursors/shareMyCursor";
 import { syncMapView } from "./syncMapView";
 
@@ -53,6 +55,11 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     provider.destroy();
   });
 
+  const awarenessMap = signalFromAwareness(
+    provider.awareness,
+    zLeafletAwarenessSchema
+  );
+
   // Add my custom features to the map:
   shareMyCursor(
     provider,
@@ -60,7 +67,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     () => props.username,
     () => props.userColor
   );
-  displayUserCursors(provider, map);
+  displayUserCursors(map, provider, awarenessMap);
   syncMapView(map, yState);
 
   return (
@@ -70,6 +77,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
         map={map}
         yStrokes={ydoc.getArray("strokes")}
         clientId={provider.awareness.clientID}
+        awarenessMap={awarenessMap}
       />
     </div>
   );

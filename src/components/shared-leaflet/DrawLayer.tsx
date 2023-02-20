@@ -4,12 +4,16 @@ import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
+import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
+import { MultiplayerLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
+import { USER_COLORS } from "../ColorPicker";
 
 export interface DrawLayerProps {
   map: L.Map;
   yStrokes: Y.Array<Y.Map<any>>;
   clientId: number;
+  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
 }
 
 export function DrawLayer(props: DrawLayerProps) {
@@ -69,27 +73,23 @@ export function DrawLayer(props: DrawLayerProps) {
   function addStrokeToMap(stroke: Y.Map<any>) {
     const iconRoot = (<div />) as HTMLElement;
 
+    const strokeSignal = signalFromY(stroke);
+
     const pointsSignal = signalFromY<Y.Array<[number, number]>>(
-      stroke?.get("points")
+      stroke.get("points")
     );
 
-    const hasPoints = createMemo(() => !!pointsSignal()?.length);
-    createEffect(() => {
-      if (!hasPoints()) return;
-    });
+    const startPoint = createMemo(() => pointsSignal().get(0));
 
     const marker = createMemo(() =>
-      hasPoints()
-        ? L.marker(
-            props.map.containerPointToLatLng(stroke?.get("points").get(0)),
-            {
-              icon: L.divIcon({
-                html: iconRoot,
-                className: "[cursor:inherit!important]",
-                iconSize: [0, 0],
-              }),
-            }
-          ).addTo(props.map)
+      startPoint()
+        ? L.marker(props.map.containerPointToLatLng(startPoint()), {
+            icon: L.divIcon({
+              html: iconRoot,
+              className: "[cursor:inherit!important]",
+              iconSize: [0, 0],
+            }),
+          }).addTo(props.map)
         : undefined
     );
     marker();
@@ -100,19 +100,29 @@ export function DrawLayer(props: DrawLayerProps) {
     const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
 
     function setupCanvas(canvas: HTMLCanvasElement) {
+      const rc = rough.canvas(canvas);
+      const ctx = canvas.getContext("2d");
+
       createEffect(() => {
         const points = pointsSignal();
         if (!points) return;
 
-        rough.canvas(canvas).linearPath(
-          points.map((coord) => {
-            const start = points.get(0);
-            return [
-              coord[0] - start[0] + canvasRadius,
-              coord[1] - start[1] + canvasRadius,
-            ];
-          })
-        );
+        const start = points.get(0);
+        const pointsOnMap = points.map<[number, number]>((coord) => [
+          coord[0] - start[0] + canvasRadius,
+          coord[1] - start[1] + canvasRadius,
+        ]);
+
+        const svgPath = getSvgPathFromStroke(pointsOnMap);
+
+        const color =
+          USER_COLORS[
+            props.awarenessMap[strokeSignal().get("clientId")]?.userColor ??
+              "Black"
+          ];
+
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        rc.linearPath(pointsOnMap, { stroke: color, seed: stroke.get("seed") });
       });
     }
 

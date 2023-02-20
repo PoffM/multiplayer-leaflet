@@ -5,20 +5,16 @@ import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import {
   AwarenessChanges,
-  signalFromAwareness
+  AwarenessMapSignal,
 } from "../../../solid-yjs/signalFromAwareness";
 import { CursorIcon } from "./CursorIcon";
-import {
-  MultiplayerLeafletAwareness,
-  zLeafletAwarenessSchema
-} from "./MultiplayerLeafletAwareness";
+import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
-export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
-  const awarenessMap = signalFromAwareness(
-    provider.awareness,
-    zLeafletAwarenessSchema
-  );
-
+export function displayUserCursors(
+  map: LeafletMap,
+  provider: WebrtcProvider,
+  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>
+) {
   const cleanupFunctions = new Map<number, () => void>();
 
   // Add the user's own cursor to the map, hiding the hand icon:
@@ -44,9 +40,7 @@ export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
 }
 
 function addCursorMarkerToMap(
-  awarenessMap: {
-    [key: number]: MultiplayerLeafletAwareness | undefined;
-  },
+  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>,
   clientId: number,
   map: LeafletMap,
   hideHand: boolean
