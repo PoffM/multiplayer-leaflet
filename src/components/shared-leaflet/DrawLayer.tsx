@@ -103,6 +103,14 @@ export function DrawLayer(props: DrawLayerProps) {
       const rc = rough.canvas(canvas);
       const ctx = canvas.getContext("2d");
 
+      const color = createMemo(
+        () =>
+          USER_COLORS[
+            props.awarenessMap[strokeSignal().get("clientId")]?.userColor ??
+              "Black"
+          ]
+      );
+
       createEffect(() => {
         const points = pointsSignal();
         if (!points) return;
@@ -113,16 +121,12 @@ export function DrawLayer(props: DrawLayerProps) {
           coord[1] - start[1] + canvasRadius,
         ]);
 
-        const svgPath = getSvgPathFromStroke(pointsOnMap);
-
-        const color =
-          USER_COLORS[
-            props.awarenessMap[strokeSignal().get("clientId")]?.userColor ??
-              "Black"
-          ];
+        // const svgPath = getSvgPathFromStroke(pointsOnMap);
 
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        rc.linearPath(pointsOnMap, { stroke: color, seed: stroke.get("seed") });
+
+        console.log("redrawing path");
+        rc.linearPath(pointsOnMap, { stroke: color(), seed: stroke.get("seed") });
       });
     }
 
