@@ -15,10 +15,10 @@ export type AwarenessMapSignal<T> = {
 };
 
 /** Create a solidjs signal from a Yjs Awareness */
-export function signalFromAwareness<T>(
+export function signalFromAwareness<T extends ZodSchema<any>>(
   awareness: Awareness,
-  stateSchema: ZodSchema<T>
-): AwarenessMapSignal<T> {
+  stateSchema: T
+): AwarenessMapSignal<T["_output"]> {
   function parseState(rawState: unknown) {
     const parsed = stateSchema.safeParse(rawState);
     return parsed.success ? parsed.data : undefined;

@@ -1,29 +1,35 @@
-import { clsx } from "clsx";
-import { FaSolidHand, FaSolidHandBackFist } from "solid-icons/fa";
+import { FaSolidHand, FaSolidHandBackFist, FaSolidPen } from "solid-icons/fa";
 import { USER_COLORS } from "../../ColorPicker";
 import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
 export function CursorIcon(props: {
   state: MultiplayerLeafletAwareness | undefined;
-  hideHand: boolean;
 }) {
+  function iconProps() {
+    return {
+      size: "20px",
+      fill: USER_COLORS[props.state?.userColor ?? "Black"],
+      class: "cursor-none"
+    };
+  }
+
   return (
     <div class="relative">
       <div class="absolute -left-1 -top-1">
-        <div class="space-y-1">
-          {props.state?.mousePressed ? (
-            <FaSolidHandBackFist
-              size="20px"
-              // @ts-expect-error
-              fill={USER_COLORS[props.state?.userColor]}
-              class={clsx(props.hideHand && "invisible")} />
-          ) : (
-            <FaSolidHand
-              size="20px"
-              // @ts-expect-error
-              fill={USER_COLORS[props.state?.userColor]}
-              class={clsx(props.hideHand && "invisible")} />
-          )}
+        <div
+          class="space-y-1"
+          style={{
+            transform:
+              props.state?.tool === "DRAW" ? "translate(10px, -10px)" : "",
+          }}
+        >
+          {props.state?.tool === "MOVE" &&
+            (props.state?.mousePressed ? (
+              <FaSolidHandBackFist {...iconProps()} />
+            ) : (
+              <FaSolidHand {...iconProps()} />
+            ))}
+          {props.state?.tool === "DRAW" && <FaSolidPen {...iconProps()} />}
           <div
             class="text-gray-200 py-1 px-2 rounded-md font-bold whitespace-nowrap"
             style={{

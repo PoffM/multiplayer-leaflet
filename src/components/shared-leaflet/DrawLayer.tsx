@@ -3,27 +3,26 @@ import rough from "roughjs";
 import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
+import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
-import { MultiplayerLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
 import { USER_COLORS } from "../ColorPicker";
-import { map } from "lodash";
+import { MultiplayerLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
 
 export interface DrawLayerProps {
   map: L.Map;
   yStrokes: Y.Array<Y.Map<any>>;
-  clientId: number;
+  awareness: Awareness;
   awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
 }
 
 export function DrawLayer(props: DrawLayerProps) {
   const store = createMutable({
-    tool: "MOVE" as "DRAW" | "MOVE",
-    drawDiv: undefined as HTMLDivElement | undefined,
-
     drawing: false,
   });
+
+  let drawDiv: HTMLDivElement | undefined = undefined;
 
   const zoom = from<number>((set) => {
     const updateZoom = () => set(props.map.getZoom());
@@ -38,7 +37,7 @@ export function DrawLayer(props: DrawLayerProps) {
     store.drawing = true;
 
     currentStroke = new Y.Map();
-    currentStroke.set("clientId", props.clientId);
+    currentStroke.set("clientId", props.awareness.clientID);
     currentStroke.set("seed", Math.random() * 1000);
 
     const points = new Y.Array<[number, number]>();
@@ -87,7 +86,6 @@ export function DrawLayer(props: DrawLayerProps) {
         ? L.marker(props.map.containerPointToLatLng(startPoint()), {
             icon: L.divIcon({
               html: iconRoot,
-              className: "[cursor:inherit!important]",
               iconSize: [0, 0],
             }),
           }).addTo(props.map)
@@ -156,8 +154,8 @@ export function DrawLayer(props: DrawLayerProps) {
 
   createEffect(() =>
     store.drawing
-      ? store.drawDiv?.addEventListener("mousemove", addPointToPath)
-      : store.drawDiv?.removeEventListener("mousemove", addPointToPath)
+      ? drawDiv?.addEventListener("mousemove", addPointToPath)
+      : drawDiv?.removeEventListener("mousemove", addPointToPath)
   );
 
   window.addEventListener("mouseup", finishDrawing);
@@ -173,13 +171,13 @@ export function DrawLayer(props: DrawLayerProps) {
         <div class="flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
           <button
             class="h-[34px] px-2 hover:bg-neutral-100"
-            onClick={() => (store.tool = "MOVE")}
+            onClick={() => props.awareness.setLocalStateField("tool", "MOVE")}
           >
             move
           </button>
           <button
             class="h-[34px] px-2 hover:bg-neutral-100"
-            onClick={() => (store.tool = "DRAW")}
+            onClick={() => props.awareness.setLocalStateField("tool", "DRAW")}
           >
             draw
           </button>
@@ -213,12 +211,13 @@ export function DrawLayer(props: DrawLayerProps) {
 
     props.map.fireEvent("mousemove", leafletEvent);
   }
+
   return (
     <>
-      {store.tool === "DRAW" && (
+      {props.awarenessMap[props.awareness.clientID]?.tool === "DRAW" && (
         <div
-          class="absolute inset-0 cursor-pointer z-[700]"
-          ref={(it) => (store.drawDiv = it)}
+          class="absolute inset-0 z-[700] cursor-none"
+          ref={drawDiv}
           onMouseDown={startDraw}
           onMouseMove={forwardMouseMoveToMap}
         />

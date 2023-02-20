@@ -21,14 +21,13 @@ export function displayUserCursors(
   const cleanupMyCursor = addCursorMarkerToMap(
     awarenessMap,
     provider.awareness.clientID,
-    map,
-    true
+    map
   );
   cleanupFunctions.set(provider.awareness.clientID, cleanupMyCursor);
 
   provider.awareness.on("update", (changes: AwarenessChanges) => {
     for (const clientId of changes.added) {
-      const cleanup = addCursorMarkerToMap(awarenessMap, clientId, map, false);
+      const cleanup = addCursorMarkerToMap(awarenessMap, clientId, map);
       cleanupFunctions.set(clientId, cleanup);
     }
 
@@ -42,8 +41,7 @@ export function displayUserCursors(
 function addCursorMarkerToMap(
   awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>,
   clientId: number,
-  map: LeafletMap,
-  hideHand: boolean
+  map: LeafletMap
 ) {
   const iconRoot = (<div />) as HTMLElement;
 
@@ -52,7 +50,7 @@ function addCursorMarkerToMap(
   const marker = L.marker(initialState?.mouseLatLng ?? [0, 0], {
     icon: L.divIcon({
       html: iconRoot,
-      className: "[cursor:inherit!important]",
+      className: ""
     }),
   }).addTo(map);
 
@@ -64,7 +62,7 @@ function addCursorMarkerToMap(
   });
 
   const disposeSolid = render(
-    () => <CursorIcon state={awarenessMap[clientId]} hideHand={hideHand} />,
+    () => <CursorIcon state={awarenessMap[clientId]} />,
     iconRoot
   );
 

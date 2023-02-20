@@ -76,8 +76,8 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
       <DrawLayer
         map={map}
         yStrokes={ydoc.getArray("strokes")}
-        clientId={provider.awareness.clientID}
         awarenessMap={awarenessMap}
+        awareness={provider.awareness}
       />
     </div>
   );
