@@ -32,22 +32,27 @@ export function DrawLayer(props: DrawLayerProps) {
   });
 
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
+  const cleanupFns = [] as (() => void)[];
   function strokesObserver(event: Y.YArrayEvent<Y.Map<any>>) {
     if (event.changes.added) {
       for (const item of event.changes.added) {
         for (const stroke of item.content.getContent() as Y.Map<any>[]) {
-          addStrokeToMap({
+          const cleanup = addStrokeToMap({
             stroke,
             awarenessMap: props.awarenessMap,
             map: props.map,
             zoom: () => zoom() ?? 0,
           });
+          cleanupFns.push(cleanup)
         }
       }
     }
   }
   props.yStrokes.observe(strokesObserver);
-  onCleanup(() => props.yStrokes.unobserve(strokesObserver));
+  onCleanup(() => {
+    props.yStrokes.unobserve(strokesObserver);
+    cleanupFns.forEach(fn => fn());
+  });
 
   addDrawButtonsControlToMap(props.map, {
     awareness: props.awareness,

@@ -26,35 +26,26 @@ export function addStrokeToMap({
   zoom,
 }: AddStrokeToMapParams) {
   const iconRoot = (<div />) as HTMLElement;
+  const marker = L.marker([0, 0], {
+    icon: L.divIcon({
+      html: iconRoot,
+      iconSize: [0, 0],
+    }),
+  }).addTo(map);
 
-  const strokeSignal = signalFromY(stroke);
+  const disposeSolid = render(() => {
+    const strokeSignal = signalFromY(stroke);
 
-  const pointsSignal = signalFromY<Y.Array<[number, number]>>(
-    stroke.get("points")
-  );
+    const pointsSignal = signalFromY<Y.Array<[number, number]>>(
+      stroke.get("points")
+    );
 
-  const startPoint = createMemo(() => pointsSignal().get(0));
-
-  const marker = createMemo(() =>
-    startPoint()
-      ? L.marker(map.containerPointToLatLng(startPoint()), {
-          icon: L.divIcon({
-            html: iconRoot,
-            iconSize: [0, 0],
-          }),
-        }).addTo(map)
-      : undefined
-  );
-  marker();
-
-  const origZoom = zoom();
-
-  const zoomDiff = () => zoom()! - origZoom;
-  const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
-
-  function setupCanvas(canvas: HTMLCanvasElement) {
-    const rc = rough.canvas(canvas);
-    const ctx = canvas.getContext("2d");
+    const startPoint = createMemo(() => pointsSignal().get(0));
+    createEffect(() => {
+      if (startPoint()) {
+        marker.setLatLng(map.containerPointToLatLng(startPoint()));
+      }
+    });
 
     const color = createMemo(
       () =>
@@ -62,6 +53,27 @@ export function addStrokeToMap({
           awarenessMap[strokeSignal().get("clientId")]?.userColor ?? "Black"
         ]
     );
+
+    const origZoom = zoom();
+
+    const zoomDiff = () => zoom()! - origZoom;
+    const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
+
+    const canvasRadius = 700;
+    const canvas = (
+      <canvas
+        class="cursor-none"
+        width={canvasRadius * 2}
+        height={canvasRadius * 2}
+        style={{
+          transform: `translate(${zoomOffset()}%, ${zoomOffset()}%)`,
+          scale: Math.pow(2, zoomDiff()),
+        }}
+      />
+    ) as HTMLCanvasElement;
+
+    const rc = rough.canvas(canvas);
+    const ctx = canvas.getContext("2d");
 
     createEffect(() => {
       const points = pointsSignal();
@@ -81,27 +93,12 @@ export function addStrokeToMap({
         seed: stroke.get("seed"),
       });
     });
-  }
 
-  const canvasRadius = 700;
-  const disposeSolid = render(
-    () => (
-      <canvas
-        class="cursor-none"
-        width={canvasRadius * 2}
-        height={canvasRadius * 2}
-        style={{
-          transform: `translate(${zoomOffset()}%, ${zoomOffset()}%)`,
-          scale: Math.pow(2, zoomDiff()),
-        }}
-        ref={setupCanvas}
-      />
-    ),
-    iconRoot
-  );
+    return canvas;
+  }, iconRoot);
 
   function cleanup() {
-    marker()?.remove();
+    marker.remove();
     disposeSolid();
   }
 
