@@ -1,7 +1,5 @@
-import clsx from "clsx";
 import * as L from "leaflet";
 import rough from "roughjs";
-import { FaSolidHand, FaSolidPen } from "solid-icons/fa";
 import { createEffect, createMemo, from, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { render } from "solid-js/web";
@@ -9,8 +7,9 @@ import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
-import { USER_COLORS } from "../ColorPicker";
-import { MultiplayerLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
+import { USER_COLORS } from "../../ColorPicker";
+import { MultiplayerLeafletAwareness } from "../live-cursors/MultiplayerLeafletAwareness";
+import { addDrawButtonsControlToMap } from "./DrawButtonsControl";
 
 export interface DrawLayerProps {
   map: L.Map;
@@ -169,80 +168,11 @@ export function DrawLayer(props: DrawLayerProps) {
     window.removeEventListener("mouseup", finishDrawing);
     window.removeEventListener("blur", finishDrawing);
   });
-
-  function isSelected(tool: MultiplayerLeafletAwareness["tool"]) {
-    return props.awarenessMap[props.awareness.clientID]?.tool === tool;
-  }
-
-  const controlDiv = (<div />) as HTMLElement;
-  const disposeSolidControl = render(
-    () => (
-      <div class="space-y-1">
-        <div class="w-fit flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
-          <button
-            class="h-[34px] px-2 hover:bg-neutral-100"
-            onClick={() => props.awareness.setLocalStateField("tool", "MOVE")}
-            title="Move Mode"
-            style={{
-              color: isSelected("MOVE")
-                ? USER_COLORS[
-                    props.awarenessMap[props.awareness.clientID]?.userColor ??
-                      "Green"
-                  ]
-                : "black",
-            }}
-          >
-            <FaSolidHand size="20px" />
-          </button>
-          <button
-            class="h-[34px] px-2 hover:bg-neutral-100"
-            onClick={() => props.awareness.setLocalStateField("tool", "DRAW")}
-            title="Draw Mode"
-            style={{
-              color: isSelected("DRAW")
-                ? USER_COLORS[
-                    props.awarenessMap[props.awareness.clientID]?.userColor ??
-                      "Green"
-                  ]
-                : "black",
-            }}
-          >
-            <FaSolidPen size="20px" />
-          </button>
-        </div>
-        <div class="bg-white border-2 rounded border-neutral-400 text-black text-center px-1">
-          Press space to switch
-        </div>
-      </div>
-    ),
-    controlDiv
-  );
-
-  class DrawControl extends L.Control {
-    onAdd(): HTMLElement {
-      return controlDiv;
-    }
-  }
-
-  const control = new DrawControl({ position: "topleft" }).addTo(props.map);
-
-  function toggleToolOnPressSpace(e: KeyboardEvent): void {
-    if (e.key === " ") {
-      e.preventDefault();
-      const tool = props.awarenessMap[props.awareness.clientID]?.tool;
-      props.awareness.setLocalStateField(
-        "tool",
-        tool === "DRAW" ? "MOVE" : "DRAW"
-      );
-    }
-  }
-  window.addEventListener("keydown", toggleToolOnPressSpace);
-
-  onCleanup(() => {
-    control.remove();
-    disposeSolidControl();
-    window.removeEventListener("keydown", toggleToolOnPressSpace);
-  });
+  
+  addDrawButtonsControlToMap(props.map, {
+    awareness: props.awareness,
+    awarenessMap: props.awarenessMap
+  })
 
   function forwardMouseMoveToMap(e: MouseEvent) {
     // @ts-expect-error layerX/Y should exist:
@@ -277,36 +207,4 @@ export function DrawLayer(props: DrawLayerProps) {
       )}
     </>
   );
-}
-
-function med(A: number[], B: number[]) {
-  return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-}
-
-// Trim SVG path data so number are each two decimal points. This
-// improves SVG exports, and prevents rendering errors on points
-// with long decimals.
-const TO_FIXED_PRECISION = /(\s?[A-Z]?,?-?[0-9]*\.[0-9]{0,2})(([0-9]|e|-)*)/g;
-
-function getSvgPathFromStroke(points: number[][]): string {
-  if (!points.length) {
-    return "";
-  }
-
-  const max = points.length - 1;
-
-  return points
-    .reduce(
-      (acc, point, i, arr) => {
-        if (i === max) {
-          acc.push(point, med(point, arr[0]), "L", arr[0], "Z");
-        } else {
-          acc.push(point, med(point, arr[i + 1]));
-        }
-        return acc;
-      },
-      ["M", points[0], "Q"]
-    )
-    .join(" ")
-    .replace(TO_FIXED_PRECISION, "$1");
 }

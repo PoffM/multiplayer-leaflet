@@ -5,7 +5,7 @@ import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
 import { USER_COLORS } from "../ColorPicker";
-import { DrawLayer } from "./DrawLayer";
+import { DrawLayer } from "./draw-on-map/DrawLayer";
 import { displayUserCursors } from "./live-cursors/displayUserCursors";
 import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
 import { shareMyCursor } from "./live-cursors/shareMyCursor";
