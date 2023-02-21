@@ -39,11 +39,10 @@ export function DrawLayer(props: DrawLayerProps) {
         for (const stroke of item.content.getContent() as Y.Map<any>[]) {
           const cleanup = addStrokeToMap({
             stroke,
-            awarenessMap: props.awarenessMap,
             map: props.map,
             zoom: () => zoom() ?? 0,
           });
-          cleanupFns.push(cleanup)
+          cleanupFns.push(cleanup);
         }
       }
     }
@@ -51,7 +50,7 @@ export function DrawLayer(props: DrawLayerProps) {
   props.yStrokes.observe(strokesObserver);
   onCleanup(() => {
     props.yStrokes.unobserve(strokesObserver);
-    cleanupFns.forEach(fn => fn());
+    cleanupFns.forEach((fn) => fn());
   });
 
   addDrawButtonsControlToMap(props.map, {

@@ -3,16 +3,13 @@ import getStroke from "perfect-freehand";
 import { createEffect, createMemo } from "solid-js";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
-import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
 import { USER_COLORS } from "../../ColorPicker";
-import { MultiplayerLeafletAwareness } from "../live-cursors/MultiplayerLeafletAwareness";
 import { getSvgPathFromStroke } from "./svg-utils";
 
 export interface AddStrokeToMapParams {
   stroke: Y.Map<any>;
   map: L.Map;
-  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
   zoom: () => number;
 }
 
@@ -20,12 +17,7 @@ export interface AddStrokeToMapParams {
  * Mounts a stroke to the map as a canvas.
  * The stroke is automatically redrawn as more points are added to it.
  */
-export function addStrokeToMap({
-  stroke,
-  map,
-  awarenessMap,
-  zoom,
-}: AddStrokeToMapParams) {
+export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
   const iconRoot = (<div />) as HTMLElement;
   const marker = L.marker([0, 0], {
     icon: L.divIcon({
@@ -51,7 +43,7 @@ export function addStrokeToMap({
     const color = createMemo(
       () =>
         USER_COLORS[
-          awarenessMap[strokeSignal().get("clientId")]?.userColor ?? "Black"
+          (strokeSignal().get("color") ?? "Black") as keyof typeof USER_COLORS
         ]
     );
 
@@ -85,7 +77,10 @@ export function addStrokeToMap({
         coord[1] - start[1] + canvasRadius,
       ]);
 
-      const outlinePoints = getStroke(pointsOnMap, { size: 8 }) as [number, number][];
+      const outlinePoints = getStroke(pointsOnMap, { size: 8 }) as [
+        number,
+        number
+      ][];
 
       const outlineSvgPath = getSvgPathFromStroke(outlinePoints);
 
