@@ -1,3 +1,4 @@
+import * as L from "leaflet";
 import { createEffect, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { Awareness } from "y-protocols/awareness";
@@ -5,8 +6,10 @@ import * as Y from "yjs";
 
 export interface DrawWithMouseParams {
   yStrokes: Y.Array<Y.Map<any>>;
+  yState: Y.Map<any>;
   awareness: Awareness;
   drawDiv: () => HTMLDivElement | undefined;
+  map: L.Map;
 }
 
 export function setupDrawingWithMouse(params: DrawWithMouseParams) {
@@ -19,13 +22,18 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
   function startDrawing(e: MouseEvent) {
     store.drawing = true;
 
+    // @ts-expect-error layerX/Y should exist:
+    const containerStartPoint = [e.layerX, e.layerY] as [number, number];
+    const startLatLng = params.map.containerPointToLatLng(containerStartPoint);
+
     currentStroke = new Y.Map();
+    currentStroke.set("originalZoom", params.yState.get("position").zoom);
+    currentStroke.set("startLatLng", [startLatLng.lat, startLatLng.lng]);
     currentStroke.set("color", params.awareness.getLocalState()?.userColor);
     currentStroke.set("seed", Math.random() * 1000);
 
     const points = new Y.Array<[number, number]>();
-    // @ts-expect-error layerX/Y should exist:
-    points.push([[e.layerX, e.layerY]]);
+    points.push([containerStartPoint]);
     currentStroke.set("points", new Y.Array<[number, number]>());
 
     params.yStrokes.push([currentStroke]);

@@ -33,10 +33,11 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
       stroke.get("points")
     );
 
-    const startPoint = createMemo(() => pointsSignal().get(0));
+    const startLatLng = createMemo(() => strokeSignal().get("startLatLng"));
+
     createEffect(() => {
-      if (startPoint()) {
-        marker.setLatLng(map.containerPointToLatLng(startPoint()));
+      if (startLatLng()) {
+        marker.setLatLng(startLatLng());
       }
     });
 
@@ -47,9 +48,7 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
         ]
     );
 
-    const origZoom = zoom();
-
-    const zoomDiff = () => zoom()! - origZoom;
+    const zoomDiff = () => zoom()! - stroke.get("originalZoom");
     const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
 
     const canvasRadius = 700;

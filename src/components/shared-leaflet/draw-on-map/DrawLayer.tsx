@@ -10,6 +10,7 @@ import { setupDrawingWithMouse } from "./setupDrawingWithMouse";
 
 export interface DrawLayerProps {
   map: L.Map;
+  yState: Y.Map<unknown>;
   yStrokes: Y.Array<Y.Map<any>>;
   awareness: Awareness;
   awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
@@ -22,6 +23,8 @@ export function DrawLayer(props: DrawLayerProps) {
     awareness: props.awareness,
     drawDiv: () => drawDiv,
     yStrokes: props.yStrokes,
+    yState: props.yState,
+    map: props.map,
   });
 
   const zoom = from<number>((set) => {

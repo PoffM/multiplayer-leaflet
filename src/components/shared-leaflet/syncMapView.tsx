@@ -18,6 +18,7 @@ export function syncMapView(map: LeafletMap, yState: Y.Map<any>) {
       yState.set("position", newPosition);
     }
   }
+  updateYState();
 
   function handleMove(e: LeafletEvent) {
     /** True when the local user is dragging the map. */

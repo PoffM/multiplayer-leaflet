@@ -75,6 +75,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
       {leafletDiv}
       <DrawLayer
         map={map}
+        yState={yState}
         yStrokes={ydoc.getArray("strokes")}
         awarenessMap={awarenessMap}
         awareness={provider.awareness}
