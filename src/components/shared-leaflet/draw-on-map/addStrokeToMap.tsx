@@ -1,6 +1,6 @@
 import * as L from "leaflet";
 import getStroke from "perfect-freehand";
-import { createEffect, createMemo } from "solid-js";
+import { Accessor, createEffect, createMemo, from, Show } from "solid-js";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
 import { signalFromY } from "~/solid-yjs/signalFromY";
@@ -10,14 +10,13 @@ import { getSvgPathFromStroke } from "./svg-utils";
 export interface AddStrokeToMapParams {
   stroke: Y.Map<any>;
   map: L.Map;
-  zoom: () => number;
 }
 
 /**
  * Mounts a stroke to the map as a canvas.
  * The stroke is automatically redrawn as more points are added to it.
  */
-export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
+export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
   const iconRoot = (<div />) as HTMLElement;
   const marker = L.marker([0, 0], {
     icon: L.divIcon({
@@ -29,6 +28,13 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
   // Get rid of focus ring around pen stroke canvases:
   // @ts-expect-error "blur" should exist on target
   marker.getElement()!.onfocus = (e) => e.target?.blur?.();
+
+  const zoom = from<number>((set) => {
+    const updateZoom = () => set(map.getZoom());
+    updateZoom();
+    map.on("zoom", updateZoom);
+    return () => map.removeEventListener("zoom", updateZoom);
+  });
 
   const disposeSolid = render(() => {
     const strokeSignal = signalFromY(stroke);
@@ -58,7 +64,7 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
     const canvasRadius = 700;
     const canvas = (
       <canvas
-        class="cursor-none"
+        class="cursor-none transition-all"
         width={canvasRadius * 2}
         height={canvasRadius * 2}
         style={{
@@ -70,6 +76,7 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
 
     const ctx = canvas.getContext("2d");
 
+    // Re-draw the stroke when new points are added:
     createEffect(() => {
       const points = pointsSignal();
       if (!points) return;

@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import { from, onCleanup } from "solid-js";
+import { onCleanup } from "solid-js";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
@@ -27,13 +27,6 @@ export function DrawLayer(props: DrawLayerProps) {
     map: props.map,
   });
 
-  const zoom = from<number>((set) => {
-    const updateZoom = () => set(props.map.getZoom());
-    updateZoom();
-    props.map.on("zoom", updateZoom);
-    return () => props.map.removeEventListener("zoom", updateZoom);
-  });
-
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
   const cleanupFns = [] as (() => void)[];
   function strokesObserver(event: Y.YArrayEvent<Y.Map<any>>) {
@@ -43,7 +36,6 @@ export function DrawLayer(props: DrawLayerProps) {
           const cleanup = addStrokeToMap({
             stroke,
             map: props.map,
-            zoom: () => zoom() ?? 0,
           });
           cleanupFns.push(cleanup);
         }
