@@ -26,6 +26,10 @@ export function addStrokeToMap({ stroke, map, zoom }: AddStrokeToMapParams) {
     }),
   }).addTo(map);
 
+  // Get rid of focus ring around pen stroke canvases:
+  // @ts-expect-error "blur" should exist on target
+  marker.getElement()!.onfocus = (e) => e.target?.blur?.();
+
   const disposeSolid = render(() => {
     const strokeSignal = signalFromY(stroke);
 
