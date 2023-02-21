@@ -67,14 +67,17 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
           <FaSolidPen size="20px" />
         </button>
       </div>
-      <div class="bg-white border-2 rounded border-neutral-400 text-black text-center px-1">
-        Press space to switch
+      <div class="bg-white border-2 rounded border-neutral-400 text-black text-center px-1 max-w-[90px]">
+        Press space to switch tools
       </div>
     </div>
   );
 }
 
-export function addDrawButtonsControlToMap(map: L.Map, props: DrawButtonControlProps) {
+export function addDrawButtonsControlToMap(
+  map: L.Map,
+  props: DrawButtonControlProps
+) {
   const controlDiv = (<div />) as HTMLElement;
   const disposeSolidControl = render(
     () => (

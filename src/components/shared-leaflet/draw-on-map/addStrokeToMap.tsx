@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import rough from "roughjs";
+import getStroke from "perfect-freehand";
 import { createEffect, createMemo } from "solid-js";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
@@ -7,6 +7,7 @@ import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
 import { signalFromY } from "~/solid-yjs/signalFromY";
 import { USER_COLORS } from "../../ColorPicker";
 import { MultiplayerLeafletAwareness } from "../live-cursors/MultiplayerLeafletAwareness";
+import { getSvgPathFromStroke } from "./svg-utils";
 
 export interface AddStrokeToMapParams {
   stroke: Y.Map<any>;
@@ -72,7 +73,6 @@ export function addStrokeToMap({
       />
     ) as HTMLCanvasElement;
 
-    const rc = rough.canvas(canvas);
     const ctx = canvas.getContext("2d");
 
     createEffect(() => {
@@ -85,22 +85,25 @@ export function addStrokeToMap({
         coord[1] - start[1] + canvasRadius,
       ]);
 
-      // const svgPath = getSvgPathFromStroke(pointsOnMap);
+      const outlinePoints = getStroke(pointsOnMap, { size: 8 }) as [number, number][];
 
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      rc.linearPath(pointsOnMap, {
-        stroke: color(),
-        seed: stroke.get("seed"),
-      });
+      const outlineSvgPath = getSvgPathFromStroke(outlinePoints);
+
+      const path = new Path2D(outlineSvgPath);
+
+      if (!ctx) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = color();
+      ctx.fill(path);
     });
 
     return canvas;
   }, iconRoot);
 
-  function cleanup() {
+  return function cleanup() {
     marker.remove();
     disposeSolid();
-  }
-
-  return cleanup;
+  };
 }
