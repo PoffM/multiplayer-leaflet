@@ -34,7 +34,7 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
   });
 
   return (
-    <div class="space-y-1">
+    <div class="space-y-1 select-none">
       <div class="w-fit flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
         <button
           class="h-[34px] px-2 hover:bg-neutral-100"
