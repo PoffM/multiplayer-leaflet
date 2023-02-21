@@ -20,7 +20,7 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
     store.drawing = true;
 
     currentStroke = new Y.Map();
-    currentStroke.set("color", params.awareness.getLocalState().userColor);
+    currentStroke.set("color", params.awareness.getLocalState()?.userColor);
     currentStroke.set("seed", Math.random() * 1000);
 
     const points = new Y.Array<[number, number]>();
