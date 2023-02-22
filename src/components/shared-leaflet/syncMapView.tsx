@@ -1,14 +1,11 @@
 import type { LeafletEvent, Map as LeafletMap } from "leaflet";
 import { debounce, isEqual, throttle } from "lodash";
-import { Accessor, createEffect } from "solid-js";
+import { createEffect } from "solid-js";
 import * as Y from "yjs";
+import { signalFromY } from "~/solid-yjs/signalFromY";
 
 /** Two-way syncing of the Leaflet Map view with Yjs state, using solid js signals. */
-export function syncMapView(
-  map: LeafletMap,
-  yState: Y.Map<unknown>,
-  stateSignal: Accessor<{ [x: string]: any } | undefined>
-) {
+export function syncMapView(map: LeafletMap, yState: Y.Map<any>) {
   /** Propagates Map UI events to Y state updates: */
   function updateYState() {
     const zoom = map.getZoom();
@@ -45,9 +42,11 @@ export function syncMapView(
   // After the user stops moving the map:
   map.on("zoomend", handleMove);
 
+  const stateSignal = signalFromY(yState);
+
   // Propagate Y state updates to Map UI state:
   createEffect(() => {
-    const newPosition = stateSignal()?.position;
+    const newPosition = stateSignal()?.get("position");
 
     if (!newPosition) return;
 

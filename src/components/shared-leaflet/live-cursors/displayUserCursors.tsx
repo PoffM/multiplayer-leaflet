@@ -5,34 +5,29 @@ import { render } from "solid-js/web";
 import { WebrtcProvider } from "y-webrtc";
 import {
   AwarenessChanges,
-  signalFromAwareness,
+  AwarenessMapSignal,
 } from "../../../solid-yjs/signalFromAwareness";
 import { CursorIcon } from "./CursorIcon";
-import {
-  MultiplayerLeafletAwareness,
-  zLeafletAwarenessSchema,
-} from "./MultiplayerLeafletAwareness";
+import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
-export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
-  const awarenessMap = signalFromAwareness(
-    provider.awareness,
-    zLeafletAwarenessSchema
-  );
-
+export function displayUserCursors(
+  map: LeafletMap,
+  provider: WebrtcProvider,
+  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>
+) {
   const cleanupFunctions = new Map<number, () => void>();
 
   // Add the user's own cursor to the map, hiding the hand icon:
   const cleanupMyCursor = addCursorMarkerToMap(
     awarenessMap,
     provider.awareness.clientID,
-    map,
-    true
+    map
   );
   cleanupFunctions.set(provider.awareness.clientID, cleanupMyCursor);
 
   provider.awareness.on("update", (changes: AwarenessChanges) => {
     for (const clientId of changes.added) {
-      const cleanup = addCursorMarkerToMap(awarenessMap, clientId, map, false);
+      const cleanup = addCursorMarkerToMap(awarenessMap, clientId, map);
       cleanupFunctions.set(clientId, cleanup);
     }
 
@@ -44,28 +39,20 @@ export function displayUserCursors(provider: WebrtcProvider, map: LeafletMap) {
 }
 
 function addCursorMarkerToMap(
-  awarenessMap: {
-    [key: number]: MultiplayerLeafletAwareness | undefined;
-  },
+  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>,
   clientId: number,
-  map: LeafletMap,
-  hideHand: boolean
+  map: LeafletMap
 ) {
   const iconRoot = (<div />) as HTMLElement;
 
   const initialState = awarenessMap[clientId];
 
   const marker = L.marker(initialState?.mouseLatLng ?? [0, 0], {
-    icon: L.divIcon({ html: iconRoot }),
+    icon: L.divIcon({
+      html: iconRoot,
+      className: ""
+    }),
   }).addTo(map);
-
-  // Get rid of the default white box on the marker:
-  const markerElement = marker.getElement();
-  if (markerElement) {
-    markerElement.style.border = "none";
-    markerElement.style.backgroundColor = "transparent";
-    markerElement.style.cursor = "inherit";
-  }
 
   createEffect(() => {
     const state = awarenessMap[clientId];
@@ -75,7 +62,7 @@ function addCursorMarkerToMap(
   });
 
   const disposeSolid = render(
-    () => <CursorIcon state={awarenessMap[clientId]} hideHand={hideHand} />,
+    () => <CursorIcon state={awarenessMap[clientId]} />,
     iconRoot
   );
 

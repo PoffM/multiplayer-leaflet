@@ -10,17 +10,21 @@ export interface AwarenessChanges {
   removed: number[];
 }
 
+export type AwarenessMapSignal<T> = {
+  [clientID: number]: T | undefined;
+};
+
 /** Create a solidjs signal from a Yjs Awareness */
-export function signalFromAwareness<T>(
+export function signalFromAwareness<T extends ZodSchema<any>>(
   awareness: Awareness,
-  stateSchema: ZodSchema<T>
-) {
+  stateSchema: T
+): AwarenessMapSignal<T["_output"]> {
   function parseState(rawState: unknown) {
     const parsed = stateSchema.safeParse(rawState);
     return parsed.success ? parsed.data : undefined;
   }
 
-  const store = createMutable<{ [clientId: number]: T | undefined }>({
+  const store = createMutable<AwarenessMapSignal<T>>({
     [awareness.clientID]: parseState(awareness.getLocalState()),
   });
 

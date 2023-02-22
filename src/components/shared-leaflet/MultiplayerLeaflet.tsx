@@ -3,9 +3,11 @@ import "leaflet/dist/leaflet.css";
 import { onCleanup, onMount } from "solid-js";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { signalFromY } from "../../solid-yjs/signalFromY";
+import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
 import { USER_COLORS } from "../ColorPicker";
+import { DrawLayer } from "./draw-on-map/DrawLayer";
 import { displayUserCursors } from "./live-cursors/displayUserCursors";
+import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
 import { shareMyCursor } from "./live-cursors/shareMyCursor";
 import { syncMapView } from "./syncMapView";
 
@@ -16,17 +18,16 @@ export interface MultiplayerLeafletProps {
 }
 
 export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
-  const div = (
-    <div class="rounded-md w-[700px] h-[700px]" />
+  const leafletDiv = (
+    <div class="absolute rounded-md w-[700px] h-[700px]" />
   ) as HTMLDivElement;
 
   const ydoc = new Y.Doc();
 
   const yState = ydoc.getMap("leafletState");
-  const stateSignal = signalFromY(yState);
 
   // Setup the Leaflet map:
-  const map = L.map(div).setView([51.505, -0.09], 13);
+  const map = L.map(leafletDiv).setView([51.505, -0.09], 13);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -54,6 +55,11 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     provider.destroy();
   });
 
+  const awarenessMap = signalFromAwareness(
+    provider.awareness,
+    zLeafletAwarenessSchema
+  );
+
   // Add my custom features to the map:
   shareMyCursor(
     provider,
@@ -61,8 +67,19 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     () => props.username,
     () => props.userColor
   );
-  displayUserCursors(provider, map);
-  syncMapView(map, yState, stateSignal);
+  displayUserCursors(map, provider, awarenessMap);
+  syncMapView(map, yState);
 
-  return div;
+  return (
+    <div class="relative">
+      {leafletDiv}
+      <DrawLayer
+        map={map}
+        yState={yState}
+        yStrokes={ydoc.getArray("strokes")}
+        awarenessMap={awarenessMap}
+        awareness={provider.awareness}
+      />
+    </div>
+  );
 }

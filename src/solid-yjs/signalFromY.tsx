@@ -1,15 +1,14 @@
-import { from } from "solid-js";
-import { reconcile } from "solid-js/store";
+import { Accessor, from } from "solid-js";
 import * as Y from "yjs";
 
 /** Create a solidjs signal from a Yjs Type */
 export function signalFromY<T extends Y.AbstractType<any>>(y: T) {
-  return from<ReturnType<T["toJSON"]>>((set) => {
-    set(y.toJSON());
-    function observer(a: Y.YEvent<Y.AbstractType<T>>) {
-      set(reconcile(a.target.toJSON()));
+  return from<T>((set) => {
+    function observer() {
+      set(() => y);
     }
+    observer();
     y.observe(observer);
     return () => y.unobserve(observer);
-  });
+  }) as Accessor<T>;
 }
