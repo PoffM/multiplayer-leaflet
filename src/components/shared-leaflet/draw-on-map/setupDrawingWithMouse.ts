@@ -24,11 +24,12 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
 
     // @ts-expect-error layerX/Y should exist:
     const containerStartPoint = [e.layerX, e.layerY] as [number, number];
-    const startLatLng = params.map.containerPointToLatLng(containerStartPoint);
 
     currentStroke = new Y.Map();
-    currentStroke.set("originalZoom", params.yState.get("position").zoom);
-    currentStroke.set("startLatLng", [startLatLng.lat, startLatLng.lng]);
+    currentStroke.set("bounds", [
+      params.map.getBounds().getSouthWest(),
+      params.map.getBounds().getNorthEast(),
+    ]);
     currentStroke.set("color", params.awareness.getLocalState()?.userColor);
     currentStroke.set("seed", Math.random() * 1000);
 

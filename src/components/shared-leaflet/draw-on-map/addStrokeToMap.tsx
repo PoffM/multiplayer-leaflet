@@ -57,7 +57,15 @@ export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
     svgElement
   );
 
-  const svgOverlay = L.svgOverlay(svgElement, map.getBounds()).addTo(map);
+  const bounds = strokeSignal().get("bounds") as [
+    L.LatLngExpression,
+    L.LatLngExpression
+  ];
+
+  const svgOverlay = L.svgOverlay(
+    svgElement,
+    new L.LatLngBounds(...bounds)
+  ).addTo(map);
 
   return function cleanup() {
     disposeSolid();
