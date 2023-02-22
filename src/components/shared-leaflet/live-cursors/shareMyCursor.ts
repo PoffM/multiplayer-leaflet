@@ -1,5 +1,5 @@
 import type { LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import { batch, createEffect } from "solid-js";
+import { batch, createEffect, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { WebrtcProvider } from "y-webrtc";
 import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
@@ -12,10 +12,10 @@ export function shareMyCursor(
   userColor: () => string
 ) {
   const localCursorStateStore = createMutable<
-    Pick<MultiplayerLeafletAwareness, "mouseLatLng" | "mousePressed">
+    Pick<MultiplayerLeafletAwareness, "mouseContainerPoint" | "mousePressed">
   >({
     mousePressed: false,
-    mouseLatLng: [0, 0],
+    mouseContainerPoint: [0, 0],
   });
 
   function updateMyPointer(e: LeafletMouseEvent) {
@@ -28,13 +28,25 @@ export function shareMyCursor(
       }
 
       if (!e.latlng) return;
-      localCursorStateStore.mouseLatLng = [e.latlng.lat, e.latlng.lng];
+      localCursorStateStore.mouseContainerPoint = [
+        e.containerPoint.x,
+        e.containerPoint.y,
+      ];
     });
   }
 
   map.on("mousemove", updateMyPointer);
   map.on("mousedown", updateMyPointer);
   map.on("mouseup", updateMyPointer);
+
+  // Make sure leaflet knows the mouse button is released when the cursor isn't on the map element:
+  const fireMapMouseUpEvent = () => map.fireEvent("mouseup");
+  window.addEventListener("mouseup", fireMapMouseUpEvent);
+  window.addEventListener("blur", fireMapMouseUpEvent);
+  onCleanup(() => {
+    window.removeEventListener("mouseup", fireMapMouseUpEvent);
+    window.removeEventListener("blur", fireMapMouseUpEvent);
+  });
 
   createEffect(() =>
     provider.awareness.setLocalStateField(
@@ -44,8 +56,8 @@ export function shareMyCursor(
   );
   createEffect(() =>
     provider.awareness.setLocalStateField(
-      "mouseLatLng",
-      localCursorStateStore.mouseLatLng
+      "mouseContainerPoint",
+      localCursorStateStore.mouseContainerPoint
     )
   );
   createEffect(() =>

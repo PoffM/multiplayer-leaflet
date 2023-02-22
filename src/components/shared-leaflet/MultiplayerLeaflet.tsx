@@ -6,7 +6,7 @@ import * as Y from "yjs";
 import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
 import { USER_COLORS } from "../ColorPicker";
 import { DrawLayer } from "./draw-on-map/DrawLayer";
-import { displayUserCursors } from "./live-cursors/displayUserCursors";
+import { CursorsOverlay } from "./live-cursors/CursorsOverlay";
 import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
 import { shareMyCursor } from "./live-cursors/shareMyCursor";
 import { syncMapView } from "./syncMapView";
@@ -19,7 +19,7 @@ export interface MultiplayerLeafletProps {
 
 export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   const leafletDiv = (
-    <div class="absolute rounded-md w-[700px] h-[700px]" />
+    <div class="absolute rounded-md w-[700px] h-[700px] [cursor:none!important]" />
   ) as HTMLDivElement;
 
   const ydoc = new Y.Doc();
@@ -34,15 +34,6 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   }).addTo(map);
   onMount(() => map.invalidateSize());
   onCleanup(() => map.remove());
-
-  // Make sure leaflet knows the mouse button is released when the cursor isn't on the map element:
-  const fireMapMouseUpEvent = () => map.fireEvent("mouseup");
-  window.addEventListener("mouseup", fireMapMouseUpEvent);
-  window.addEventListener("blur", fireMapMouseUpEvent);
-  onCleanup(() => {
-    window.removeEventListener("mouseup", fireMapMouseUpEvent);
-    window.removeEventListener("blur", fireMapMouseUpEvent);
-  });
 
   // clients connected to the same room-name share document updates
   const provider = new WebrtcProvider(
@@ -67,7 +58,6 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
     () => props.username,
     () => props.userColor
   );
-  displayUserCursors(map, provider, awarenessMap);
   syncMapView(map, yState);
 
   return (
@@ -80,6 +70,7 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
         awarenessMap={awarenessMap}
         awareness={provider.awareness}
       />
+      <CursorsOverlay awarenessMap={awarenessMap} />
     </div>
   );
 }

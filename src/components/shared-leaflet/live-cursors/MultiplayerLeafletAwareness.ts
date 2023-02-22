@@ -10,7 +10,7 @@ export const zLeafletAwarenessSchema = z.object({
     .refine((str) => str in USER_COLORS) as ZodType<
     string & keyof typeof USER_COLORS
   >,
-  mouseLatLng: z.tuple([z.number(), z.number()]),
+  mouseContainerPoint: z.tuple([z.number(), z.number()]),
   mousePressed: z.boolean(),
 });
 
