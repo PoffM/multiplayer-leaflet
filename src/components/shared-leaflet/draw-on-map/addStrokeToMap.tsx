@@ -1,6 +1,6 @@
 import * as L from "leaflet";
 import getStroke from "perfect-freehand";
-import { Accessor, createEffect, createMemo, from, Show } from "solid-js";
+import { createMemo } from "solid-js";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
 import { signalFromY } from "~/solid-yjs/signalFromY";
@@ -17,98 +17,50 @@ export interface AddStrokeToMapParams {
  * The stroke is automatically redrawn as more points are added to it.
  */
 export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
-  const iconRoot = (<div />) as HTMLElement;
-  const marker = L.marker([0, 0], {
-    icon: L.divIcon({
-      html: iconRoot,
-      iconSize: [0, 0],
-    }),
-  }).addTo(map);
+  const strokeSignal = signalFromY(stroke);
 
-  // Get rid of focus ring around pen stroke canvases:
-  // @ts-expect-error "blur" should exist on target
-  marker.getElement()!.onfocus = (e) => e.target?.blur?.();
+  const pointsSignal = signalFromY<Y.Array<[number, number]>>(
+    stroke.get("points")
+  );
 
-  const zoom = from<number>((set) => {
-    const updateZoom = () => set(map.getZoom());
-    updateZoom();
-    map.on("zoom", updateZoom);
-    return () => map.removeEventListener("zoom", updateZoom);
+  const color = createMemo(
+    () =>
+      USER_COLORS[
+        (strokeSignal().get("color") ?? "Black") as keyof typeof USER_COLORS
+      ]
+  );
+
+  // Re-draw the stroke when new points are added:
+  const outlineSvgPath = createMemo(() => {
+    const points = pointsSignal();
+    if (!points) return;
+
+    const outlinePoints = getStroke(points.toArray(), { size: 8 }) as [
+      number,
+      number
+    ][];
+
+    return getSvgPathFromStroke(outlinePoints);
   });
 
-  const disposeSolid = render(() => {
-    const strokeSignal = signalFromY(stroke);
+  const { x: mapWidth, y: mapHeight } = map.getSize();
 
-    const pointsSignal = signalFromY<Y.Array<[number, number]>>(
-      stroke.get("points")
-    );
+  const svgElement = (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+    />
+  ) as SVGElement;
 
-    const startLatLng = createMemo(() => strokeSignal().get("startLatLng"));
+  const disposeSolid = render(
+    () => <path fill={color()} d={outlineSvgPath()} />,
+    svgElement
+  );
 
-    createEffect(() => {
-      if (startLatLng()) {
-        marker.setLatLng(startLatLng());
-      }
-    });
-
-    const color = createMemo(
-      () =>
-        USER_COLORS[
-          (strokeSignal().get("color") ?? "Black") as keyof typeof USER_COLORS
-        ]
-    );
-
-    const zoomDiff = () => zoom()! - stroke.get("originalZoom");
-    const zoomOffset = () => -50 * Math.pow(2, -zoomDiff()!);
-
-    const canvasRadius = 700;
-    const canvas = (
-      <canvas
-        class="cursor-none transition-all"
-        width={canvasRadius * 2}
-        height={canvasRadius * 2}
-        style={{
-          transform: `translate(${zoomOffset()}%, ${zoomOffset()}%)`,
-          scale: Math.pow(2, zoomDiff()),
-        }}
-      />
-    ) as HTMLCanvasElement;
-
-    const ctx = canvas.getContext("2d");
-
-    // Re-draw the stroke when new points are added:
-    createEffect(() => {
-      const points = pointsSignal();
-      if (!points) return;
-
-      const start = points.get(0);
-      const pointsOnMap = points.map<[number, number]>((coord) => [
-        coord[0] - start[0] + canvasRadius,
-        coord[1] - start[1] + canvasRadius,
-      ]);
-
-      const outlinePoints = getStroke(pointsOnMap, { size: 8 }) as [
-        number,
-        number
-      ][];
-
-      const outlineSvgPath = getSvgPathFromStroke(outlinePoints);
-
-      const path = new Path2D(outlineSvgPath);
-
-      if (!ctx) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = color();
-      ctx.fill(path);
-    });
-
-    return canvas;
-  }, iconRoot);
+  const svgOverlay = L.svgOverlay(svgElement, map.getBounds()).addTo(map);
 
   return function cleanup() {
-    marker.remove();
     disposeSolid();
+    svgOverlay.remove();
   };
 }
