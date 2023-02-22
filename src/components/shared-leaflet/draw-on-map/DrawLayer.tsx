@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import { onCleanup } from "solid-js";
+import { onCleanup, onMount } from "solid-js";
 import * as Y from "yjs";
 import { SharedLeafletState } from "../createSharedLeafletState";
 import { addStrokeToMap } from "./addStrokeToMap";
@@ -20,8 +20,22 @@ export function DrawLayer(props: DrawLayerProps) {
     state: props.state,
   });
 
-  // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
+  const yStrokes = props.state.ydoc.getArray<any>("strokes");
+
   const cleanupFns = [] as (() => void)[];
+
+  // Draw any strokes your peers drew before you connected:
+  onMount(() => {
+    for (const stroke of yStrokes) {
+      const cleanup = addStrokeToMap({
+        stroke,
+        map: props.map,
+      });
+      cleanupFns.push(cleanup);
+    }
+  });
+
+  // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
   function strokesObserver(event: Y.YArrayEvent<Y.Map<any>>) {
     if (event.changes.added) {
       for (const item of event.changes.added) {
@@ -35,7 +49,6 @@ export function DrawLayer(props: DrawLayerProps) {
       }
     }
   }
-  const yStrokes = props.state.ydoc.getArray<any>("strokes");
 
   yStrokes.observe(strokesObserver);
   onCleanup(() => {
