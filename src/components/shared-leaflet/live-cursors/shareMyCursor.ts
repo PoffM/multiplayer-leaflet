@@ -1,32 +1,23 @@
 import type { LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import { batch, createEffect, onCleanup } from "solid-js";
-import { createMutable } from "solid-js/store";
+import { batch, onCleanup } from "solid-js";
 import { SharedLeafletState } from "../createSharedLeafletState";
-import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
 export function shareMyCursor(state: SharedLeafletState, map: LeafletMap) {
-  const localCursorStateStore = createMutable<
-    Pick<MultiplayerLeafletAwareness, "mouseContainerPoint" | "mousePressed">
-  >({
-    mousePressed: false,
-    mouseContainerPoint: [0, 0],
-  });
-
   function updateMyPointer(e: LeafletMouseEvent) {
     batch(() => {
       if (e.type === "mousedown") {
-        localCursorStateStore.mousePressed = true;
+        state.setAwarenessField("mousePressed", true);
       }
       if (e.type === "mouseup") {
-        localCursorStateStore.mousePressed = false;
+        state.setAwarenessField("mousePressed", false);
       }
 
       if (!e.latlng) return;
-      localCursorStateStore.mouseContainerPoint = [
+      state.setAwarenessField("mouseContainerPoint", [
         e.containerPoint.x,
         e.containerPoint.y,
-      ];
+      ]);
     });
   }
 
@@ -42,14 +33,4 @@ export function shareMyCursor(state: SharedLeafletState, map: LeafletMap) {
     window.removeEventListener("mouseup", fireMapMouseUpEvent);
     window.removeEventListener("blur", fireMapMouseUpEvent);
   });
-
-  createEffect(() =>
-    state.setAwarenessField("mousePressed", localCursorStateStore.mousePressed)
-  );
-  createEffect(() =>
-    state.setAwarenessField(
-      "mouseContainerPoint",
-      localCursorStateStore.mouseContainerPoint
-    )
-  );
 }
