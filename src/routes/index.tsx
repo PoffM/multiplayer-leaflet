@@ -84,7 +84,7 @@ export default function Home() {
                       class="input input-bordered w-full max-w-xs"
                       value={state.myAwareness()?.username}
                       onInput={(e) =>
-                        state.provider.awareness.setLocalStateField(
+                        state.setAwarenessField(
                           "username",
                           // @ts-expect-error should always work:
                           e.target.value
@@ -101,10 +101,7 @@ export default function Home() {
                     <ColorPicker
                       color={state.myAwareness()?.userColor}
                       onChange={(newColor) =>
-                        state.provider.awareness.setLocalStateField(
-                          "userColor",
-                          newColor
-                        )
+                        state.setAwarenessField("userColor", newColor)
                       }
                     />
                   </label>

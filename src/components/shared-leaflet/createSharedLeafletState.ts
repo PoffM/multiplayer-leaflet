@@ -78,12 +78,20 @@ export function createSharedLeafletState({
     return awarenessStore[provider.awareness.clientID];
   }
 
+  function setAwarenessField<TField extends keyof MultiplayerLeafletAwareness>(
+    field: TField,
+    val: MultiplayerLeafletAwareness[TField]
+  ) {
+    provider.awareness.setLocalStateField(field, val);
+  }
+
   return {
     provider,
     ydoc,
     yLeafletState,
     awarenessStore,
     myAwareness,
+    setAwarenessField,
   };
 }
 

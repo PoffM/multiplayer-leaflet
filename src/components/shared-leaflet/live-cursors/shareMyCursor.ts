@@ -1,11 +1,11 @@
 import type { LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import { batch, createEffect, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
-import { WebrtcProvider } from "y-webrtc";
+import { SharedLeafletState } from "../createSharedLeafletState";
 import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
-export function shareMyCursor(provider: WebrtcProvider, map: LeafletMap) {
+export function shareMyCursor(state: SharedLeafletState, map: LeafletMap) {
   const localCursorStateStore = createMutable<
     Pick<MultiplayerLeafletAwareness, "mouseContainerPoint" | "mousePressed">
   >({
@@ -44,13 +44,10 @@ export function shareMyCursor(provider: WebrtcProvider, map: LeafletMap) {
   });
 
   createEffect(() =>
-    provider.awareness.setLocalStateField(
-      "mousePressed",
-      localCursorStateStore.mousePressed
-    )
+    state.setAwarenessField("mousePressed", localCursorStateStore.mousePressed)
   );
   createEffect(() =>
-    provider.awareness.setLocalStateField(
+    state.setAwarenessField(
       "mouseContainerPoint",
       localCursorStateStore.mouseContainerPoint
     )

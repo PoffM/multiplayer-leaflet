@@ -15,7 +15,7 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
   const isDrawing = createMemo(() => params.state.myAwareness()?.mousePressed);
 
   function startDrawing(e: MouseEvent) {
-    params.state.provider.awareness.setLocalStateField("mousePressed", true);
+    params.state.setAwarenessField("mousePressed", true);
 
     // @ts-expect-error layerX/Y should exist:
     const containerStartPoint = [e.layerX, e.layerY] as [number, number];
@@ -43,7 +43,7 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
   }
 
   function finishDrawing() {
-    params.state.provider.awareness.setLocalStateField("mousePressed", false);
+    params.state.setAwarenessField("mousePressed", false);
     currentStroke = null;
   }
 

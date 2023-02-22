@@ -19,10 +19,7 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
     if (e.key === " ") {
       e.preventDefault();
       const tool = props.state.myAwareness()?.tool;
-      props.state.provider.awareness.setLocalStateField(
-        "tool",
-        tool === "DRAW" ? "MOVE" : "DRAW"
-      );
+      props.state.setAwarenessField("tool", tool === "DRAW" ? "MOVE" : "DRAW");
     }
   }
 
@@ -36,9 +33,7 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
       <div class="w-fit flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
         <button
           class="h-[34px] px-2 hover:bg-neutral-100"
-          onClick={() =>
-            props.state.provider.awareness.setLocalStateField("tool", "MOVE")
-          }
+          onClick={() => props.state.setAwarenessField("tool", "MOVE")}
           title="Move Mode"
           style={{
             color: isSelected("MOVE")
@@ -50,9 +45,7 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
         </button>
         <button
           class="h-[34px] px-2 hover:bg-neutral-100"
-          onClick={() =>
-            props.state.provider.awareness.setLocalStateField("tool", "DRAW")
-          }
+          onClick={() => props.state.setAwarenessField("tool", "DRAW")}
           title="Draw Mode"
           style={{
             color: isSelected("DRAW")
