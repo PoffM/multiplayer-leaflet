@@ -1,30 +1,23 @@
 import * as L from "leaflet";
 import { onCleanup } from "solid-js";
-import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
-import { AwarenessMapSignal } from "~/solid-yjs/signalFromAwareness";
-import { MultiplayerLeafletAwareness } from "../live-cursors/MultiplayerLeafletAwareness";
+import { SharedLeafletState } from "../createSharedLeafletState";
 import { addStrokeToMap } from "./addStrokeToMap";
 import { addDrawButtonsControlToMap } from "./DrawButtonsControl";
 import { setupDrawingWithMouse } from "./setupDrawingWithMouse";
 
 export interface DrawLayerProps {
   map: L.Map;
-  yState: Y.Map<unknown>;
-  yStrokes: Y.Array<Y.Map<any>>;
-  awareness: Awareness;
-  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
+  state: SharedLeafletState;
 }
 
 export function DrawLayer(props: DrawLayerProps) {
   let drawDiv: HTMLDivElement | undefined = undefined;
 
   const { startDrawing } = setupDrawingWithMouse({
-    awareness: props.awareness,
     drawDiv: () => drawDiv,
-    yStrokes: props.yStrokes,
-    yState: props.yState,
     map: props.map,
+    state: props.state,
   });
 
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
@@ -42,15 +35,16 @@ export function DrawLayer(props: DrawLayerProps) {
       }
     }
   }
-  props.yStrokes.observe(strokesObserver);
+  const yStrokes = props.state.ydoc.getArray<any>("strokes");
+
+  yStrokes.observe(strokesObserver);
   onCleanup(() => {
-    props.yStrokes.unobserve(strokesObserver);
+    yStrokes.unobserve(strokesObserver);
     cleanupFns.forEach((fn) => fn());
   });
 
   addDrawButtonsControlToMap(props.map, {
-    awareness: props.awareness,
-    awarenessMap: props.awarenessMap,
+    state: props.state,
   });
 
   function forwardMouseMoveToMap(e: MouseEvent) {
@@ -76,7 +70,7 @@ export function DrawLayer(props: DrawLayerProps) {
 
   return (
     <>
-      {props.awarenessMap[props.awareness.clientID]?.tool === "DRAW" && (
+      {props.state.myAwareness()?.tool === "DRAW" && (
         <div
           class="absolute inset-0 z-[700] cursor-none"
           ref={drawDiv}

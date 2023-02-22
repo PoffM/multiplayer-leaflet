@@ -33,14 +33,8 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   return (
     <div class="relative">
       {leafletDiv}
-      <DrawLayer
-        map={map}
-        yState={props.state.yLeafletState}
-        yStrokes={props.state.ydoc.getArray("strokes")}
-        awarenessMap={props.state.awarenessStore}
-        awareness={props.state.provider.awareness}
-      />
-      <CursorsOverlay awarenessMap={props.state.awarenessStore} />
+      <DrawLayer map={map} state={props.state} />
+      <CursorsOverlay state={props.state} />
     </div>
   );
 }

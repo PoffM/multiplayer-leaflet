@@ -1,13 +1,11 @@
 import * as L from "leaflet";
 import { createEffect, onCleanup } from "solid-js";
 import { createMutable } from "solid-js/store";
-import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
+import { SharedLeafletState } from "../createSharedLeafletState";
 
 export interface DrawWithMouseParams {
-  yStrokes: Y.Array<Y.Map<any>>;
-  yState: Y.Map<any>;
-  awareness: Awareness;
+  state: SharedLeafletState;
   drawDiv: () => HTMLDivElement | undefined;
   map: L.Map;
 }
@@ -30,14 +28,14 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
       params.map.getBounds().getSouthWest(),
       params.map.getBounds().getNorthEast(),
     ]);
-    currentStroke.set("color", params.awareness.getLocalState()?.userColor);
+    currentStroke.set("color", params.state.myAwareness()?.userColor);
     currentStroke.set("seed", Math.random() * 1000);
 
     const points = new Y.Array<[number, number]>();
     points.push([containerStartPoint]);
     currentStroke.set("points", new Y.Array<[number, number]>());
 
-    params.yStrokes.push([currentStroke]);
+    params.state.ydoc.getArray("strokes").push([currentStroke]);
   }
 
   function addPointToPath(e: MouseEvent) {

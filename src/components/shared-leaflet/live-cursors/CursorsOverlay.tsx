@@ -1,17 +1,12 @@
 import { For } from "solid-js";
-import { AwarenessMapSignal } from "../../../solid-yjs/signalFromAwareness";
+import { SharedLeafletState } from "../createSharedLeafletState";
 import { CursorIcon } from "./CursorIcon";
-import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
-export interface CursorsOverlayProps {
-  awarenessMap: AwarenessMapSignal<MultiplayerLeafletAwareness>;
-}
-
-export function CursorsOverlay(props: CursorsOverlayProps) {
+export function CursorsOverlay(props: { state: SharedLeafletState }) {
   return (
     <div class="absolute inset-0 pointer-events-none">
       <div class="relative w-full h-full">
-        <For each={Object.entries(props.awarenessMap)}>
+        <For each={Object.entries(props.state.awarenessStore)}>
           {([_, awareness]) => {
             const point = () => awareness?.mouseContainerPoint;
 
