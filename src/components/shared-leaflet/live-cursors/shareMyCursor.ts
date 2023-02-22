@@ -5,12 +5,7 @@ import { WebrtcProvider } from "y-webrtc";
 import { MultiplayerLeafletAwareness } from "./MultiplayerLeafletAwareness";
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
-export function shareMyCursor(
-  provider: WebrtcProvider,
-  map: LeafletMap,
-  username: () => string,
-  userColor: () => string
-) {
+export function shareMyCursor(provider: WebrtcProvider, map: LeafletMap) {
   const localCursorStateStore = createMutable<
     Pick<MultiplayerLeafletAwareness, "mouseContainerPoint" | "mousePressed">
   >({
@@ -59,11 +54,5 @@ export function shareMyCursor(
       "mouseContainerPoint",
       localCursorStateStore.mouseContainerPoint
     )
-  );
-  createEffect(() =>
-    provider.awareness.setLocalStateField("userColor", userColor())
-  );
-  createEffect(() =>
-    provider.awareness.setLocalStateField("username", username())
   );
 }
