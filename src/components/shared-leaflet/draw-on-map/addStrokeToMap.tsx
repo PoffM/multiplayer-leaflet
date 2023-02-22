@@ -13,7 +13,7 @@ export interface AddStrokeToMapParams {
 }
 
 /**
- * Mounts a stroke to the map as a canvas.
+ * Mounts a stroke to the map as an SVG overlay.
  * The stroke is automatically redrawn as more points are added to it.
  */
 export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
