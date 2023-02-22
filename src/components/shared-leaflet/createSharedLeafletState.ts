@@ -1,6 +1,14 @@
-import { onCleanup } from "solid-js";
+import { createEffect, onCleanup, onMount } from "solid-js";
+import {
+  adjectives,
+  animals,
+  colors,
+  uniqueNamesGenerator,
+} from "unique-names-generator";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
+import { USER_COLORS } from "~/components/ColorPicker";
+import { MultiplayerLeafletAwareness } from "~/components/shared-leaflet/live-cursors/MultiplayerLeafletAwareness";
 import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
 import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
 
@@ -17,18 +25,54 @@ export function createSharedLeafletState({
   const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
     password: "password",
   });
-
-  const yLeafletState = ydoc.getMap("leafletState");
-
   onCleanup(() => {
     provider.disconnect();
     provider.destroy();
   });
 
+  const yLeafletState = ydoc.getMap("leafletState");
+
   const awarenessStore = signalFromAwareness(
     provider.awareness,
     zLeafletAwarenessSchema
   );
+
+  onMount(() => {
+    const initialAwareness: MultiplayerLeafletAwareness = {
+      // Get the stored username, otherwise generate a random one:
+      username:
+        localStorage.getItem("username") ||
+        uniqueNamesGenerator({
+          dictionaries: [adjectives, colors, animals],
+          length: 3,
+          separator: "-",
+        }),
+      // Get the stored userColor, otherwise generate a random one:
+      // @ts-expect-error a valid key should always be used:
+      userColor:
+        localStorage.getItem("userColor") ||
+        Object.keys(USER_COLORS)[
+          Math.floor(Math.random() * Object.keys(USER_COLORS).length)
+        ],
+      mouseContainerPoint: [0, 0],
+      mousePressed: false,
+    };
+
+    provider.awareness.setLocalState(
+      zLeafletAwarenessSchema.parse(initialAwareness)
+    );
+  });
+
+  createEffect(() => {
+    const username = myAwareness()?.username;
+    if (!username) return;
+    localStorage.setItem("username", username);
+  });
+  createEffect(() => {
+    const userColor = myAwareness()?.userColor;
+    if (!userColor) return;
+    localStorage.setItem("userColor", userColor);
+  });
 
   function myAwareness() {
     return awarenessStore[provider.awareness.clientID];
