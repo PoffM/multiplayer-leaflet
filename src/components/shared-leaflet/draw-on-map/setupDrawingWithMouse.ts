@@ -1,6 +1,5 @@
 import * as L from "leaflet";
-import { createEffect, onCleanup } from "solid-js";
-import { createMutable } from "solid-js/store";
+import { createEffect, createMemo, onCleanup } from "solid-js";
 import * as Y from "yjs";
 import { SharedLeafletState } from "../createSharedLeafletState";
 
@@ -11,14 +10,12 @@ export interface DrawWithMouseParams {
 }
 
 export function setupDrawingWithMouse(params: DrawWithMouseParams) {
-  const store = createMutable({
-    drawing: false,
-  });
-
   let currentStroke: Y.Map<any> | null = null;
 
+  const isDrawing = createMemo(() => params.state.myAwareness()?.mousePressed);
+
   function startDrawing(e: MouseEvent) {
-    store.drawing = true;
+    params.state.provider.awareness.setLocalStateField("mousePressed", true);
 
     // @ts-expect-error layerX/Y should exist:
     const containerStartPoint = [e.layerX, e.layerY] as [number, number];
@@ -46,12 +43,12 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
   }
 
   function finishDrawing() {
-    store.drawing = false;
+    params.state.provider.awareness.setLocalStateField("mousePressed", false);
     currentStroke = null;
   }
 
   createEffect(() =>
-    store.drawing
+    isDrawing()
       ? params.drawDiv()?.addEventListener("mousemove", addPointToPath)
       : params.drawDiv()?.removeEventListener("mousemove", addPointToPath)
   );
