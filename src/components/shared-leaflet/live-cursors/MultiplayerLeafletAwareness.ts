@@ -1,7 +1,7 @@
 import { z, ZodType } from "zod";
 import { USER_COLORS } from "../../ColorPicker";
 
-export const zLeafletAwarenessSchema = z.object({
+export const zSharedLeafletAwareness = z.object({
   username: z.string().max(50),
   tool: z.enum(["MOVE", "DRAW"]).default("MOVE"),
   userColor: z
@@ -15,4 +15,4 @@ export const zLeafletAwarenessSchema = z.object({
 });
 
 export type MultiplayerLeafletAwareness =
-  typeof zLeafletAwarenessSchema["_output"];
+  typeof zSharedLeafletAwareness["_output"];

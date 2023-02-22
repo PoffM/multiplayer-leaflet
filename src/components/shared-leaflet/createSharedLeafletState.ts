@@ -10,7 +10,7 @@ import * as Y from "yjs";
 import { USER_COLORS } from "~/components/ColorPicker";
 import { MultiplayerLeafletAwareness } from "~/components/shared-leaflet/live-cursors/MultiplayerLeafletAwareness";
 import { signalFromAwareness } from "~/solid-yjs/signalFromAwareness";
-import { zLeafletAwarenessSchema } from "./live-cursors/MultiplayerLeafletAwareness";
+import { zSharedLeafletAwareness } from "./live-cursors/MultiplayerLeafletAwareness";
 
 export interface SharedLeafletStateParams {
   roomName: string;
@@ -34,7 +34,7 @@ export function createSharedLeafletState({
 
   const awarenessStore = signalFromAwareness(
     provider.awareness,
-    zLeafletAwarenessSchema
+    zSharedLeafletAwareness
   );
 
   onMount(() => {
@@ -59,7 +59,7 @@ export function createSharedLeafletState({
     };
 
     provider.awareness.setLocalState(
-      zLeafletAwarenessSchema.parse(initialAwareness)
+      zSharedLeafletAwareness.parse(initialAwareness)
     );
   });
 
