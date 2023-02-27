@@ -1,30 +1,25 @@
-# SolidStart
+# Multiplayer Leaflet
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+Peer-to-peer shared leaflet map that you can draw on.
 
-## Creating a project
+## Features
+
+* Panning and zooming are shared across users.
+* Users see each other's cursors and names.
+* Draw on the map with the colored pen tool.
+
+## Stack
+
+- [SolidJS](https://www.solidjs.com/) (UI framework)
+- [Solid Start](https://start.solidjs.com/) (SolidJS-based web application framework)
+- [Leaflet](https://leafletjs.com/) (Javascript-based interactive maps)
+- [yjs](https://docs.yjs.dev/) (Collaboratively replicated data library)
+- [Tailwind](https://tailwindcss.com/) (CSS utility framework)
+- [DaisyUI](https://daisyui.com/) (Tailwind-based UI component library)
+
+## Environment variables for deployment
 
 ```bash
-# create a new project in the current directory
-npm init solid@latest
-
-# create a new project in my-app
-npm init solid@latest my-app
+# Comma-separated list of WebRTC signaling servers:
+VITE_SIGNALING=wss://signaling.yjs.dev,wss://y-webrtc-signaling-eu.herokuapp.com,wss://y-webrtc-signaling-us.herokuapp.com
 ```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-Solid apps are built with _adapters_, which optimise your project for deployment to different environments.
-
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different adapter, add it to the `devDependencies` in `package.json` and specify in your `vite.config.js`.
