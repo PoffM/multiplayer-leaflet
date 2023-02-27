@@ -24,6 +24,9 @@ export function createSharedLeafletState({
   // clients connected to the same room-name share document updates
   const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
     password: "password",
+    signaling: import.meta.env.VITE_SIGNALING
+      ? import.meta.env.VITE_SIGNALING?.split(",")
+      : undefined,
   });
   onCleanup(() => {
     provider.disconnect();
