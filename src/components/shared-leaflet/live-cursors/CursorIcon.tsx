@@ -32,7 +32,7 @@ export function CursorIcon(props: {
             ))}
           {props.state?.tool === "DRAW" && <FaSolidPen {...iconProps()} />}
           <div
-            class="text-gray-200 py-1 px-2 rounded-md font-bold whitespace-nowrap"
+            class="whitespace-nowrap rounded-md py-1 px-2 font-bold text-gray-200"
             style={{
               "background-color":
                 USER_COLORS[props.state?.userColor ?? "Black"],

@@ -29,8 +29,8 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
   });
 
   return (
-    <div class="space-y-1 select-none">
-      <div class="w-fit flex flex-col bg-white border-2 rounded border-neutral-400 text-black divide-y-2 divide-neutral-400">
+    <div class="select-none space-y-1">
+      <div class="flex w-fit flex-col divide-y-2 divide-neutral-400 rounded border-2 border-neutral-400 bg-white text-black">
         <button
           class="h-[34px] px-2 hover:bg-neutral-100"
           onClick={() => props.state.setAwarenessField("tool", "MOVE")}
@@ -56,7 +56,7 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
           <FaSolidPen size="20px" />
         </button>
       </div>
-      <div class="bg-white border-2 rounded border-neutral-400 text-black text-center px-1 max-w-[90px]">
+      <div class="max-w-[90px] rounded border-2 border-neutral-400 bg-white px-1 text-center text-black">
         Press space to switch tools
       </div>
     </div>
