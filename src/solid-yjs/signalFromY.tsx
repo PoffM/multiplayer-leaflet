@@ -2,7 +2,7 @@ import { Accessor, from } from "solid-js";
 import * as Y from "yjs";
 
 /** Create a solidjs signal from a Yjs Type */
-export function signalFromY<T extends Y.AbstractType<any>>(y: T) {
+export function signalFromY<T extends Y.Map<unknown> | Y.Array<unknown>>(y: T) {
   return from<T>((set) => {
     function observer() {
       set(() => y);

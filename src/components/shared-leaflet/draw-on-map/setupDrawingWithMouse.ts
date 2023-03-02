@@ -10,17 +10,16 @@ export interface DrawWithMouseParams {
 }
 
 export function setupDrawingWithMouse(params: DrawWithMouseParams) {
-  let currentStroke: Y.Map<any> | null = null;
+  let currentPoints: Y.Array<[number, number]> | null = null;
 
   const isDrawing = createMemo(() => params.state.myAwareness()?.mousePressed);
 
   function startDrawing(e: MouseEvent) {
     params.state.setAwarenessField("mousePressed", true);
 
-    // @ts-expect-error layerX/Y should exist:
-    const containerStartPoint = [e.layerX, e.layerY] as [number, number];
+    const containerStartPoint: [number, number] = [e.offsetX, e.offsetY];
 
-    currentStroke = new Y.Map();
+    const currentStroke = new Y.Map();
     currentStroke.set("bounds", [
       params.map.getBounds().getSouthWest(),
       params.map.getBounds().getNorthEast(),
@@ -28,23 +27,20 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
     currentStroke.set("color", params.state.myAwareness()?.userColor);
     currentStroke.set("seed", Math.random() * 1000);
 
-    const points = new Y.Array<[number, number]>();
-    points.push([containerStartPoint]);
-    currentStroke.set("points", new Y.Array<[number, number]>());
+    currentPoints = new Y.Array<[number, number]>();
+    currentPoints.push([containerStartPoint]);
+    currentStroke.set("points", currentPoints);
 
     params.state.ydoc.getArray("strokes").push([currentStroke]);
   }
 
   function addPointToPath(e: MouseEvent) {
-    const points = currentStroke?.get("points");
-
-    // @ts-expect-error layerX/Y should exist:
-    points.push([[e.layerX, e.layerY]]);
+    currentPoints?.push([[e.offsetX, e.offsetY]]);
   }
 
   function finishDrawing() {
     params.state.setAwarenessField("mousePressed", false);
-    currentStroke = null;
+    currentPoints = null;
   }
 
   createEffect(() =>

@@ -24,7 +24,8 @@ export function ColorPicker(props: ColorPickerProps) {
   const [colorPickerOpen, setColorPickerOpen] = createSignal(false);
 
   function closeOnClickOutside(el: HTMLDivElement) {
-    const onClick = (e: MouseEvent & { target: any }) =>
+    const onClick = (e: MouseEvent) =>
+      // @ts-expect-error "target" should be the correct type
       !el.contains(e.target) && setColorPickerOpen(false);
     document.body.addEventListener("click", onClick);
 
@@ -32,23 +33,23 @@ export function ColorPicker(props: ColorPickerProps) {
   }
 
   return (
-    <div class="relative h-[3rem] aspect-square">
+    <div class="relative aspect-square h-[3rem]">
       <button
-        class="absolute h-full w-full rounded-md border-base-content border border-opacity-20"
+        class="absolute h-full w-full rounded-md border border-base-content border-opacity-20"
         style={{ "background-color": USER_COLORS[props.color ?? "Black"] }}
         onClick={() => setColorPickerOpen((it) => !it)}
       />
       {colorPickerOpen() && (
         <div class="absolute top-3/4 right-0">
           <div
-            class="bg-base-300 rounded-md p-4 grid gap-2"
+            class="grid gap-2 rounded-md bg-base-300 p-4"
             style={{ "grid-template-columns": "repeat(4, auto)" }}
             ref={closeOnClickOutside}
           >
             <For each={Object.entries(USER_COLORS)}>
               {([colorName, hex]) => (
                 <button
-                  class="w-[2rem] aspect-square rounded-md"
+                  class="aspect-square w-[2rem] rounded-md"
                   style={{ "background-color": hex }}
                   title={colorName}
                   onClick={(e) => {

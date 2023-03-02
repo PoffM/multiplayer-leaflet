@@ -19,9 +19,12 @@ export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [store, setStore] = createStore({
-    roomId: location.query.roomId as string | undefined,
-    shareLink: undefined as string | undefined,
+  const [store, setStore] = createStore<{
+    roomId?: string;
+    shareLink?: string;
+  }>({
+    roomId: location.query.roomId,
+    shareLink: undefined,
   });
 
   function updateLink() {
@@ -53,7 +56,7 @@ export default function Home() {
         return (
           <div class="fixed inset-0 flex items-center justify-center">
             <main class="space-y-4">
-              <h1 class="font-extrabold text-4xl text-center">
+              <h1 class="text-center text-4xl font-extrabold">
                 Multiplayer Leaflet
               </h1>
               {store.shareLink && (
@@ -61,7 +64,7 @@ export default function Home() {
                   <div>
                     Share this link with someone to share a synchronized map:
                   </div>
-                  <div class="input-group flex items-center justify-center w-auto border rounded-lg border-gray-500">
+                  <div class="input-group flex w-auto items-center justify-center rounded-lg border border-gray-500">
                     <div class="px-4">{store.shareLink}</div>
                     <CopyButton textToCopy={store.shareLink} />
                   </div>
@@ -72,29 +75,28 @@ export default function Home() {
               )}
               {state.myAwareness()?.username !== undefined && (
                 <div class="flex justify-center gap-4">
-                  <label class="form-control flex-row gap-1 w-[400px]">
+                  <label class="form-control w-[400px] flex-row gap-1">
                     <div class="label">
-                      <span class="label-text font-bold whitespace-nowrap">
+                      <span class="label-text whitespace-nowrap font-bold">
                         Your Username
                       </span>
                     </div>
                     <input
                       type="text"
                       placeholder="Type here"
-                      class="input input-bordered w-full max-w-xs"
+                      class="input-bordered input w-full max-w-xs"
                       value={state.myAwareness()?.username}
                       onInput={(e) =>
                         state.setAwarenessField(
                           "username",
-                          // @ts-expect-error should always work:
-                          e.target.value
+                          e.currentTarget.value
                         )
                       }
                     />
                   </label>
                   <label class="form-control flex-row gap-1">
                     <div class="label">
-                      <span class="label-text font-bold whitespace-nowrap">
+                      <span class="label-text whitespace-nowrap font-bold">
                         Your Color
                       </span>
                     </div>

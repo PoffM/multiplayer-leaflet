@@ -1,6 +1,6 @@
 import * as L from "leaflet";
 import getStroke from "perfect-freehand";
-import { createMemo } from "solid-js";
+import { Accessor, createMemo } from "solid-js";
 import { render } from "solid-js/web";
 import * as Y from "yjs";
 import { signalFromY } from "~/solid-yjs/signalFromY";
@@ -8,7 +8,7 @@ import { USER_COLORS } from "../../ColorPicker";
 import { getSvgPathFromStroke } from "./svg-utils";
 
 export interface AddStrokeToMapParams {
-  stroke: Y.Map<any>;
+  stroke: Y.Map<unknown>;
   map: L.Map;
 }
 
@@ -19,10 +19,10 @@ export interface AddStrokeToMapParams {
 export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
   const strokeSignal = signalFromY(stroke);
 
-  const pointsSignal = signalFromY<Y.Array<[number, number]>>(
-    stroke.get("points")
-  );
-
+  // @ts-expect-error Assume the right type here:
+  const pointsSignal = signalFromY(stroke.get("points")) as Accessor<
+    Y.Array<[number, number]>
+  >;
   const color = createMemo(
     () =>
       USER_COLORS[

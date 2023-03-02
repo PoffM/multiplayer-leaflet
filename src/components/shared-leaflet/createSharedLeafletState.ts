@@ -21,12 +21,12 @@ export function createSharedLeafletState({
 }: SharedLeafletStateParams) {
   const ydoc = new Y.Doc();
 
+  const signalUrls = import.meta.env.VITE_SIGNALING as string | undefined;
+
   // clients connected to the same room-name share document updates
   const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
     password: "password",
-    signaling: import.meta.env.VITE_SIGNALING
-      ? import.meta.env.VITE_SIGNALING?.split(",")
-      : undefined,
+    signaling: signalUrls?.split(",") || undefined,
   });
   onCleanup(() => {
     provider.disconnect();
@@ -41,7 +41,10 @@ export function createSharedLeafletState({
   );
 
   onMount(() => {
+    const storedColor = localStorage.getItem("userColor");
+
     const initialAwareness: MultiplayerLeafletAwareness = {
+      tool: "MOVE",
       // Get the stored username, otherwise generate a random one:
       username:
         localStorage.getItem("username") ||
@@ -53,10 +56,11 @@ export function createSharedLeafletState({
       // Get the stored userColor, otherwise generate a random one:
       // @ts-expect-error a valid key should always be used:
       userColor:
-        localStorage.getItem("userColor") ||
-        Object.keys(USER_COLORS)[
-          Math.floor(Math.random() * Object.keys(USER_COLORS).length)
-        ],
+        String(storedColor) in USER_COLORS
+          ? storedColor
+          : Object.keys(USER_COLORS)[
+              Math.floor(Math.random() * Object.keys(USER_COLORS).length)
+            ],
       mouseContainerPoint: [0, 0],
       mousePressed: false,
     };

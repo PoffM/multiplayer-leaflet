@@ -3,7 +3,7 @@ import { USER_COLORS } from "../../ColorPicker";
 
 export const zSharedLeafletAwareness = z.object({
   username: z.string().max(50),
-  tool: z.enum(["MOVE", "DRAW"]).default("MOVE"),
+  tool: z.enum(["MOVE", "DRAW"]),
   userColor: z
     .string()
     .max(20)
@@ -14,5 +14,6 @@ export const zSharedLeafletAwareness = z.object({
   mousePressed: z.boolean(),
 });
 
-export type MultiplayerLeafletAwareness =
-  typeof zSharedLeafletAwareness["_output"];
+export type MultiplayerLeafletAwareness = z.infer<
+  typeof zSharedLeafletAwareness
+>;

@@ -14,7 +14,7 @@ export interface MultiplayerLeafletProps {
 
 export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   const leafletDiv = (
-    <div class="absolute rounded-md w-[700px] h-[700px] [cursor:none!important]" />
+    <div class="absolute h-[700px] w-[700px] rounded-md [cursor:none!important]" />
   ) as HTMLDivElement;
 
   // Setup the Leaflet map:

@@ -20,13 +20,15 @@ export function DrawLayer(props: DrawLayerProps) {
     state: props.state,
   });
 
-  const yStrokes = props.state.ydoc.getArray<any>("strokes");
+  const yStrokes = props.state.ydoc.getArray("strokes");
 
-  const cleanupFns = [] as (() => void)[];
+  const cleanupFns: (() => void)[] = [];
 
   // Draw any strokes your peers drew before you connected:
   onMount(() => {
     for (const stroke of yStrokes) {
+      if (!(stroke instanceof Y.Map)) return;
+
       const cleanup = addStrokeToMap({
         stroke,
         map: props.map,
@@ -36,10 +38,10 @@ export function DrawLayer(props: DrawLayerProps) {
   });
 
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
-  function strokesObserver(event: Y.YArrayEvent<Y.Map<any>>) {
+  function strokesObserver(event: Y.YArrayEvent<unknown>) {
     if (event.changes.added) {
       for (const item of event.changes.added) {
-        for (const stroke of item.content.getContent() as Y.Map<any>[]) {
+        for (const stroke of item.content.getContent() as Y.Map<unknown>[]) {
           const cleanup = addStrokeToMap({
             stroke,
             map: props.map,
@@ -61,8 +63,7 @@ export function DrawLayer(props: DrawLayerProps) {
   });
 
   function forwardMouseMoveToMap(e: MouseEvent) {
-    // @ts-expect-error layerX/Y should exist:
-    const containerPoint: [number, number] = [e.layerX, e.layerY];
+    const containerPoint: [number, number] = [e.offsetX, e.offsetY];
 
     const leafletEvent: L.LeafletMouseEvent = {
       type: "mousemove",
@@ -86,7 +87,7 @@ export function DrawLayer(props: DrawLayerProps) {
       {props.state.myAwareness()?.tool === "DRAW" && (
         <div
           class="absolute inset-0 z-[700] cursor-none"
-          ref={drawDiv}
+          ref={(node) => (drawDiv = node)}
           onMouseDown={startDrawing}
           onMouseMove={forwardMouseMoveToMap}
         />

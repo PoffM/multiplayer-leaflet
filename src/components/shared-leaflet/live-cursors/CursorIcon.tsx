@@ -34,8 +34,8 @@ export function CursorIcon(props: {
           <div
             class="text-gray-200 py-1 px-2 rounded-md font-bold whitespace-nowrap"
             style={{
-              // @ts-expect-error
-              "background-color": USER_COLORS[props.state?.userColor],
+              "background-color":
+                USER_COLORS[props.state?.userColor ?? "Black"],
             }}
           >
             <span>{props.state?.username}</span>
