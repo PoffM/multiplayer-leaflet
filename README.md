@@ -2,6 +2,8 @@
 
 Peer-to-peer shared leaflet map that you can draw on.
 
+[![Demo video](https://img.youtube.com/vi/LkqONRcBqaE/maxresdefault.jpg)](https://www.youtube.com/watch?v=LkqONRcBqaE)
+
 ## Features
 
 * Panning and zooming are shared across users.
