@@ -3,7 +3,7 @@ import { batch, onCleanup } from "solid-js";
 import { SharedLeafletState } from "../createSharedLeafletState";
 
 /** Forward user's cursor position and pressed state to Yjs Awareness. */
-export function shareMyCursor(state: SharedLeafletState, map: LeafletMap) {
+export function shareMyCursor(map: LeafletMap, state: SharedLeafletState) {
   function updateMyPointer(e: LeafletMouseEvent) {
     batch(() => {
       if (e.type === "mousedown") {

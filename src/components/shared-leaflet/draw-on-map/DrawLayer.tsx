@@ -1,9 +1,8 @@
 import * as L from "leaflet";
-import { onCleanup, onMount } from "solid-js";
-import * as Y from "yjs";
+import { createEffect, onCleanup, onMount } from "solid-js";
 import { SharedLeafletState } from "../createSharedLeafletState";
-import { addStrokeToMap } from "./addStrokeToMap";
 import { addDrawButtonsControlToMap } from "./DrawButtonsControl";
+import { addStrokeToMap } from "./addStrokeToMap";
 import { setupDrawingWithMouse } from "./setupDrawingWithMouse";
 
 export interface DrawLayerProps {
@@ -12,6 +11,8 @@ export interface DrawLayerProps {
 }
 
 export function DrawLayer(props: DrawLayerProps) {
+  const { store } = props.state;
+
   let drawDiv: HTMLDivElement | undefined = undefined;
 
   const { startDrawing } = setupDrawingWithMouse({
@@ -20,15 +21,11 @@ export function DrawLayer(props: DrawLayerProps) {
     state: props.state,
   });
 
-  const yStrokes = props.state.ydoc.getArray("strokes");
-
   const cleanupFns: (() => void)[] = [];
 
   // Draw any strokes your peers drew before you connected:
   onMount(() => {
-    for (const stroke of yStrokes) {
-      if (!(stroke instanceof Y.Map)) return;
-
+    for (const stroke of store.strokes ?? []) {
       const cleanup = addStrokeToMap({
         stroke,
         map: props.map,
@@ -38,25 +35,25 @@ export function DrawLayer(props: DrawLayerProps) {
   });
 
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
-  function strokesObserver(event: Y.YArrayEvent<unknown>) {
-    if (event.changes.added) {
-      for (const item of event.changes.added) {
-        for (const stroke of item.content.getContent() as Y.Map<unknown>[]) {
-          const cleanup = addStrokeToMap({
-            stroke,
-            map: props.map,
-          });
-          cleanupFns.push(cleanup);
-        }
+  // TODO maybe find a faster way to react to array changes than just looping through the whole array
+  const renderedStrokes = new Set<string>();
+  createEffect(() => {
+    for (const stroke of store.strokes ?? []) {
+      if (renderedStrokes.has(stroke.id)) {
+        continue;
       }
-    }
-  }
 
-  yStrokes.observe(strokesObserver);
-  onCleanup(() => {
-    yStrokes.unobserve(strokesObserver);
-    cleanupFns.forEach((fn) => fn());
+      renderedStrokes.add(stroke.id);
+
+      const cleanup = addStrokeToMap({
+        stroke,
+        map: props.map,
+      });
+      cleanupFns.push(cleanup);
+    }
   });
+
+  onCleanup(() => cleanupFns.forEach((fn) => fn()));
 
   addDrawButtonsControlToMap(props.map, {
     state: props.state,
