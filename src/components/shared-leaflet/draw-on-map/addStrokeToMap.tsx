@@ -32,6 +32,7 @@ export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
           points.push([point[0], point[1]]);
         }
       } else {
+        // Otherwise just add the newest point:
         const newPoint = stroke.points?.at(-1);
 
         if (!newPoint) return;
