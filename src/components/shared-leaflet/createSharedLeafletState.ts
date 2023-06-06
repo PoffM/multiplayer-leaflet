@@ -1,4 +1,14 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
+import syncedStore, {
+  enableMobxBindings,
+  getYjsValue,
+} from "@syncedstore/core";
+import * as mobx from "mobx";
+import {
+  createEffect,
+  enableExternalSource,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import {
   adjectives,
   animals,
@@ -16,24 +26,60 @@ export interface SharedLeafletStateParams {
   roomName: string;
 }
 
+export interface MapState {
+  position?: {
+    zoom?: number;
+    center?: [number, number];
+  };
+}
+
+export interface StrokeData {
+  color?: string;
+  points?: [number, number][];
+  bounds: [L.LatLngExpression, L.LatLngExpression];
+  id: string;
+}
+
+enableMobxBindings(mobx);
+
+// register MobX as an external source for solid-js
+let id = 0;
+enableExternalSource((fn, trigger) => {
+  const reaction = new mobx.Reaction(`externalSource@${++id}`, trigger);
+  return {
+    track: (x) => {
+      let next;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      reaction.track(() => (next = fn(x)));
+      return next;
+    },
+    dispose: () => reaction.dispose(),
+  };
+});
+
 export function createSharedLeafletState({
   roomName,
 }: SharedLeafletStateParams) {
-  const ydoc = new Y.Doc();
-
   const signalUrls = import.meta.env.VITE_SIGNALING as string | undefined;
 
-  // clients connected to the same room-name share document updates
-  const provider = new WebrtcProvider(`shared-leaflet-${roomName}`, ydoc, {
-    password: "password",
-    signaling: signalUrls?.split(",") || undefined,
+  const store = syncedStore<{ mapState: MapState; strokes: StrokeData[] }>({
+    mapState: {},
+    strokes: [],
   });
+
+  // clients connected to the same room-name share document updates
+  const provider = new WebrtcProvider(
+    `shared-leaflet-${roomName}`,
+    getYjsValue(store) as Y.Doc,
+    {
+      password: "password",
+      signaling: signalUrls?.split(",") || undefined,
+    }
+  );
   onCleanup(() => {
     provider.disconnect();
     provider.destroy();
   });
-
-  const yLeafletState = ydoc.getMap("leafletState");
 
   const awarenessStore = signalFromAwareness(
     provider.awareness,
@@ -94,8 +140,7 @@ export function createSharedLeafletState({
 
   return {
     provider,
-    ydoc,
-    yLeafletState,
+    store,
     awarenessStore,
     myAwareness,
     setAwarenessField,

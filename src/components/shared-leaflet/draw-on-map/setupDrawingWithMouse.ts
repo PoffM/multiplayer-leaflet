@@ -1,7 +1,7 @@
 import * as L from "leaflet";
+import { nanoid } from "nanoid";
 import { createEffect, createMemo, onCleanup } from "solid-js";
-import * as Y from "yjs";
-import { SharedLeafletState } from "../createSharedLeafletState";
+import { SharedLeafletState, StrokeData } from "../createSharedLeafletState";
 
 export interface DrawWithMouseParams {
   state: SharedLeafletState;
@@ -10,7 +10,9 @@ export interface DrawWithMouseParams {
 }
 
 export function setupDrawingWithMouse(params: DrawWithMouseParams) {
-  let currentPoints: Y.Array<[number, number]> | null = null;
+  const { store } = params.state;
+
+  let currentStroke: StrokeData | null = null;
 
   const isDrawing = createMemo(() => params.state.myAwareness()?.mousePressed);
 
@@ -19,28 +21,27 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
 
     const containerStartPoint: [number, number] = [e.offsetX, e.offsetY];
 
-    const currentStroke = new Y.Map();
-    currentStroke.set("bounds", [
-      params.map.getBounds().getSouthWest(),
-      params.map.getBounds().getNorthEast(),
-    ]);
-    currentStroke.set("color", params.state.myAwareness()?.userColor);
-    currentStroke.set("seed", Math.random() * 1000);
+    store.strokes.push({
+      bounds: [
+        { ...params.map.getBounds().getSouthWest() },
+        { ...params.map.getBounds().getNorthEast() },
+      ],
+      color: params.state.myAwareness()?.userColor,
+      id: nanoid(),
+      points: [containerStartPoint],
+    });
 
-    currentPoints = new Y.Array<[number, number]>();
-    currentPoints.push([containerStartPoint]);
-    currentStroke.set("points", currentPoints);
-
-    params.state.ydoc.getArray("strokes").push([currentStroke]);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    currentStroke = store.strokes.at(-1)!;
   }
 
   function addPointToPath(e: MouseEvent) {
-    currentPoints?.push([[e.offsetX, e.offsetY]]);
+    currentStroke?.points?.push([e.offsetX, e.offsetY]);
   }
 
   function finishDrawing() {
     params.state.setAwarenessField("mousePressed", false);
-    currentPoints = null;
+    currentStroke = null;
   }
 
   createEffect(() =>

@@ -1,9 +1,8 @@
 import type { LeafletEvent, Map as LeafletMap } from "leaflet";
 import { debounce, isEqual, throttle } from "lodash";
 import { createEffect } from "solid-js";
-import * as Y from "yjs";
 import { z } from "zod";
-import { signalFromY } from "~/solid-yjs/signalFromY";
+import { SharedLeafletState } from "./createSharedLeafletState";
 
 const zPosition = z.object({
   center: z.tuple([z.number(), z.number()]),
@@ -11,17 +10,22 @@ const zPosition = z.object({
 });
 
 /** Two-way syncing of the Leaflet Map view with Yjs state, using solid js signals. */
-export function syncMapView(map: LeafletMap, yState: Y.Map<unknown>) {
+export function syncMapView(map: LeafletMap, state: SharedLeafletState) {
+  const { mapState } = state.store;
+
   /** Propagates Map UI events to Y state updates: */
   function updateYState() {
     const zoom = map.getZoom();
-    const center = [map.getCenter().lat, map.getCenter().lng];
+    const center = [map.getCenter().lat, map.getCenter().lng] as [
+      number,
+      number
+    ];
 
     const newPosition = { zoom, center };
 
     // Push the new state if it changed:
-    if (!isEqual(newPosition, yState.get("position"))) {
-      yState.set("position", newPosition);
+    if (!isEqual(newPosition, mapState.position)) {
+      mapState.position = newPosition;
     }
   }
 
@@ -39,7 +43,7 @@ export function syncMapView(map: LeafletMap, yState: Y.Map<unknown>) {
     }
   }
 
-  // Update the shared Y state:
+  // Update the shared YJS state:
   // Whlie the user drags the map:
   const moveUpdatesPerSecond = 60;
   map.on("move", throttle(handleMove, 1000 / moveUpdatesPerSecond));
@@ -49,11 +53,9 @@ export function syncMapView(map: LeafletMap, yState: Y.Map<unknown>) {
   // After the user stops moving the map:
   map.on("zoomend", handleMove);
 
-  const stateSignal = signalFromY(yState);
-
-  // Propagate Y state updates to Map UI state:
+  // Propagate YJS state updates to Map UI state:
   createEffect(() => {
-    const parsedPos = zPosition.safeParse(stateSignal()?.get("position"));
+    const parsedPos = zPosition.safeParse(mapState.position);
     const newPosition = parsedPos.success && parsedPos.data;
 
     if (!newPosition) return;

@@ -27,8 +27,8 @@ export function MultiplayerLeaflet(props: MultiplayerLeafletProps) {
   onCleanup(() => map.remove());
 
   // Add my custom features to the map:
-  shareMyCursor(props.state, map);
-  syncMapView(map, props.state.yLeafletState);
+  shareMyCursor(map, props.state);
+  syncMapView(map, props.state);
 
   return (
     <div class="relative">
