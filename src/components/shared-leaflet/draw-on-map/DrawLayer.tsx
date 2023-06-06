@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { onCleanup, onMount } from "solid-js";
 import { SharedLeafletState } from "../createSharedLeafletState";
 import { addDrawButtonsControlToMap } from "./DrawButtonsControl";
 import { addStrokeToMap } from "./addStrokeToMap";
@@ -23,22 +23,12 @@ export function DrawLayer(props: DrawLayerProps) {
 
   const cleanupFns: (() => void)[] = [];
 
-  // Draw any strokes your peers drew before you connected:
-  onMount(() => {
-    for (const stroke of store.strokes ?? []) {
-      const cleanup = addStrokeToMap({
-        stroke,
-        map: props.map,
-      });
-      cleanupFns.push(cleanup);
-    }
-  });
+  const renderedStrokes = new Set<string>();
 
   // Listen for new strokes to be drawn, and add them to the map using Leaflet Markers:
   // TODO maybe find a faster way to react to array changes than just looping through the whole array
-  const renderedStrokes = new Set<string>();
-  createEffect(() => {
-    for (const stroke of store.strokes ?? []) {
+  onMount(() => {
+    for (const stroke of store.strokes.map((it) => it)) {
       if (renderedStrokes.has(stroke.id)) {
         continue;
       }
