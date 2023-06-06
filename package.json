@@ -10,9 +10,11 @@
   "dependencies": {
     "@solidjs/meta": "^0.28.5",
     "@solidjs/router": "^0.8.2",
+    "@syncedstore/core": "^0.5.1",
     "clsx": "^1.2.1",
     "leaflet": "^1.9.4",
     "lodash": "^4.17.21",
+    "mobx": "^6.9.0",
     "nanoid": "^4.0.2",
     "perfect-freehand": "^1.2.0",
     "solid-icons": "^1.0.7",
