@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "solid-start";
 import { ColorPicker } from "~/components/ColorPicker";
 import { CopyButton } from "~/components/CopyButton";
 import { createSharedLeafletState } from "~/components/shared-leaflet/createSharedLeafletState";
+import { USERNAME_LIMIT } from "~/components/shared-leaflet/live-cursors/MultiplayerLeafletAwareness";
 
 /** Lazy-loaded map component because Leaflet can't be imported during SSR. */
 const MultiplayerLeaflet = lazy(async () => {
@@ -84,6 +85,7 @@ export default function Home() {
                     <input
                       type="text"
                       placeholder="Type here"
+                      maxLength={USERNAME_LIMIT}
                       class="input-bordered input w-full max-w-xs"
                       value={state.myAwareness()?.username}
                       onInput={(e) =>
