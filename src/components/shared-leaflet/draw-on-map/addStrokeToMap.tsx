@@ -1,6 +1,6 @@
 import * as L from "leaflet";
 import getStroke from "perfect-freehand";
-import { createMemo } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { USER_COLORS } from "../../ColorPicker";
 import { StrokeData } from "../createSharedLeafletState";
@@ -21,16 +21,32 @@ export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
   );
 
   // Re-draw the stroke when new points are added:
-  const outlineSvgPath = createMemo(() => {
-    if (!stroke.points) return;
+  const [svgPath, setSvgPath] = createSignal<string>("");
+  // De-proxy the points and store them in a plain array, then calculate the SVG path:
+  {
+    const points: [number, number][] = [];
+    createEffect(() => {
+      if (!points.length) {
+        // Initialize the points array when the stroke is first added to the map:
+        for (const point of stroke.points ?? []) {
+          points.push([point[0], point[1]]);
+        }
+      } else {
+        const newPoint = stroke.points?.at(-1);
 
-    const outlinePoints = getStroke(stroke.points, { size: 8 }) as [
-      number,
-      number
-    ][];
+        if (!newPoint) return;
 
-    return getSvgPathFromStroke(outlinePoints);
-  });
+        points.push([newPoint[0], newPoint[1]]);
+      }
+
+      const outlinePoints = getStroke(points, { size: 8 }) as [
+        number,
+        number
+      ][];
+
+      setSvgPath(getSvgPathFromStroke(outlinePoints));
+    });
+  }
 
   const { x: mapWidth, y: mapHeight } = map.getSize();
 
@@ -42,7 +58,7 @@ export function addStrokeToMap({ stroke, map }: AddStrokeToMapParams) {
   ) as SVGElement;
 
   const disposeSolid = render(
-    () => <path fill={color()} d={outlineSvgPath()} />,
+    () => <path fill={color()} d={svgPath()} />,
     svgElement
   );
 
