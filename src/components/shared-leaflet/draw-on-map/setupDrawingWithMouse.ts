@@ -1,5 +1,5 @@
 import * as L from "leaflet";
-import { uniqueId } from "lodash";
+import { nanoid } from "nanoid";
 import { createEffect, createMemo, onCleanup } from "solid-js";
 import { SharedLeafletState, StrokeData } from "../createSharedLeafletState";
 
@@ -27,7 +27,7 @@ export function setupDrawingWithMouse(params: DrawWithMouseParams) {
         { ...params.map.getBounds().getNorthEast() },
       ],
       color: params.state.myAwareness()?.userColor,
-      id: uniqueId(),
+      id: nanoid(),
       points: [containerStartPoint],
     });
 
