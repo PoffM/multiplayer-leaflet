@@ -36,26 +36,22 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
     <div class="select-none space-y-1">
       <div class="flex w-fit flex-col divide-y-2 divide-neutral-400 rounded border-2 border-neutral-400 bg-white text-black">
         <button
+          classList={{
+            "bg-neutral-200": isSelected("MOVE"),
+          }}
           class="h-[34px] px-2 hover:bg-neutral-100"
           onClick={() => props.state.setAwarenessField("tool", "MOVE")}
           title="Move Mode"
-          style={{
-            color: isSelected("MOVE")
-              ? USER_COLORS[props.state.myAwareness()?.userColor ?? "Green"]
-              : "black",
-          }}
         >
           <FaSolidHand size="20px" />
         </button>
         <button
+          classList={{
+            "bg-neutral-200": isSelected("DRAW"),
+          }}
           class="h-[34px] px-2 hover:bg-neutral-100"
           onClick={() => props.state.setAwarenessField("tool", "DRAW")}
           title="Draw Mode"
-          style={{
-            color: isSelected("DRAW")
-              ? USER_COLORS[props.state.myAwareness()?.userColor ?? "Green"]
-              : "black",
-          }}
         >
           <FaSolidPen size="20px" />
         </button>
