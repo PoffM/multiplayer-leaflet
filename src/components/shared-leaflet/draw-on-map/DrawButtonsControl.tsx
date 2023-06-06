@@ -16,7 +16,11 @@ export function DrawButtonControl(props: DrawButtonControlProps) {
   }
 
   function toggleToolOnPressSpace(e: KeyboardEvent): void {
-    if (e.key === " ") {
+    if (
+      e.key === " " &&
+      // @ts-expect-error should work
+      e.target?.tagName !== "INPUT"
+    ) {
       e.preventDefault();
       const tool = props.state.myAwareness()?.tool;
       props.state.setAwarenessField("tool", tool === "DRAW" ? "MOVE" : "DRAW");
